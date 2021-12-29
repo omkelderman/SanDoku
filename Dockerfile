@@ -1,7 +1,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
 
 WORKDIR /app
-COPY SanDoku.* .
+COPY SanDoku.* ./
 COPY SanDoku SanDoku
 RUN dotnet tool restore
 RUN dotnet publish -c Release -r linux-x64 -p:PublishReadyToRun=true SanDoku.sln
