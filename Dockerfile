@@ -8,6 +8,6 @@ RUN dotnet publish -c Release -r linux-x64 -p:PublishReadyToRun=true SanDoku.sln
 
 FROM mcr.microsoft.com/dotnet/runtime:5.0
 WORKDIR /app
-COPY --from=build /app/SanDoku/bin/Release/net5.0/linux-x64 .
+COPY --from=build /app/SanDoku/bin/Release/net5.0/linux-x64/publish .
 ENTRYPOINT ["dotnet", "SanDoku.dll"]
 EXPOSE 80
