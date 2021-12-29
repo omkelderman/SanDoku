@@ -23,6 +23,7 @@ namespace SanDoku
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddHealthChecks();
             services.AddRequestDecompression(o =>
             {
                 o.SkipUnsupportedEncodings = false;
@@ -30,10 +31,7 @@ namespace SanDoku
                 o.Providers.Add<DeflateDecompressionProvider>();
                 o.Providers.Add<GzipDecompressionProvider>();
             });
-            services.AddControllers(o =>
-            {
-                o.InputFormatters.Add(new OsuInputFormatter());
-            });
+            services.AddControllers(o => { o.InputFormatters.Add(new OsuInputFormatter()); });
             services.AddSwaggerDocument(options =>
             {
                 options.TypeMappers.Add(new PrimitiveTypeMapper(typeof(Beatmap), s =>
@@ -60,7 +58,11 @@ namespace SanDoku
             app.UseAuthorization();
 
             app.UseRequestDecompression();
-            app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
+            app.UseEndpoints(endpoints =>
+            {
+                endpoints.MapHealthChecks("/health");
+                endpoints.MapControllers();
+            });
         }
     }
 }
