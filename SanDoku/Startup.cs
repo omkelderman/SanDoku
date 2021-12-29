@@ -39,6 +39,8 @@ namespace SanDoku
                     s.Type = JsonObjectType.String;
                     s.Format = "osu-beatmap";
                 }));
+                options.Version = "v1";
+                options.Title = nameof(SanDoku);
             });
         }
 
