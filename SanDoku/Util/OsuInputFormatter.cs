@@ -13,7 +13,7 @@ namespace SanDoku.Util
 {
     public class OsuInputFormatter : TextInputFormatter
     {
-        public const string ContentType = "text/osu";
+        public const string ContentType = "plain/osu";
 
         public OsuInputFormatter()
         {
