@@ -30,10 +30,10 @@ namespace SanDoku.Controllers
         /// <param name="mods">Optionally provide mods</param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        [HttpPost]
+        [HttpPost("diff")]
         [SuppressModelStateInvalidFilter]
         [Consumes(OsuInputFormatter.ContentType)]
-        public async Task<ActionResult<DiffCalcResult>> Calc([FromBody] Beatmap beatmap, [FromQuery] LegacyGameMode? mode = null,
+        public async Task<ActionResult<DiffCalcResult>> CalcDiff([FromBody] Beatmap beatmap, [FromQuery] LegacyGameMode? mode = null,
             [FromQuery] LegacyMods mods = LegacyMods.None, CancellationToken ct = default)
         {
             if (beatmap == null) return BadRequest();
