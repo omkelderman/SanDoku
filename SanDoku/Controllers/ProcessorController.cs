@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;
 using osu.Game.Utils;
+using SanDoku.Models;
 using SanDoku.Util;
 using System;
 using System.Linq;
@@ -23,7 +24,7 @@ namespace SanDoku.Controllers
         }
 
         /// <summary>
-        /// 
+        /// Process a .osu file and calculate all difficulty properties of the map
         /// </summary>
         /// <param name="beatmap">The contents of an .osu file, must be Content-Type of "text/osu", optionally supports Content-Encoding "gzip", "deflate" and "br"</param>
         /// <param name="mode">Override game mode</param>
@@ -33,7 +34,7 @@ namespace SanDoku.Controllers
         [HttpPost("diff")]
         [SuppressModelStateInvalidFilter]
         [Consumes(OsuInputFormatter.ContentType)]
-        public async Task<ActionResult<DiffCalcResult>> CalcDiff([FromBody] Beatmap beatmap, [FromQuery] LegacyGameMode? mode = null,
+        public async Task<ActionResult<DiffResult>> CalcDiff([FromBody] Beatmap beatmap, [FromQuery] LegacyGameMode? mode = null,
             [FromQuery] LegacyMods mods = LegacyMods.None, CancellationToken ct = default)
         {
             if (beatmap == null) return BadRequest();
@@ -70,10 +71,44 @@ namespace SanDoku.Controllers
             var workingBeatmap = new ProcessorWorkingBeatmap(beatmap);
 
             _logger.LogDebug($"[{beatmapInfoStr}] start processing...");
-            var diff = await rulesetUtil.CalculateDifficultyAttributes(workingBeatmap, filtered, ct);
+            var (diffCalcResult, beatmapGameMode, gameModeUsed, modsUsed) = await rulesetUtil.CalculateDifficultyAttributes(workingBeatmap, filtered, ct);
             _logger.LogDebug($"[{beatmapInfoStr}] processing done!");
 
-            return Ok(diff);
+            var result = new DiffResult
+            {
+                BeatmapGameMode = beatmapGameMode,
+                GameModeUsed = gameModeUsed,
+                ModsUsed = modsUsed,
+                DiffCalcResult = diffCalcResult
+            };
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Calculate PP of a certain score
+        /// </summary>
+        /// <param name="ppInput">diffcalc values and score values</param>
+        /// <returns></returns>
+        [HttpPost("pp")]
+        public IActionResult CalcPp([FromBody] PpInput ppInput)
+        {
+            if (ppInput?.ScoreInfo == null || ppInput.DiffCalcResult == null) return BadRequest();
+
+            if (!Enum.IsDefined(ppInput.GameMode))
+            {
+                _logger.LogDebug($"Invalid game mode requested {ppInput.GameMode} for map pp calc");
+                return BadRequest($"invalid game mode: {ppInput.GameMode}");
+            }
+
+            var rulesetUtil = RulesetUtil.GetForLegacyGameMode(ppInput.GameMode);
+            var (pp, categoryDifficulty) = rulesetUtil.CalculatePerformance(ppInput.DiffCalcResult, ppInput.ScoreInfo);
+
+            var output = new PpOutput
+            {
+                Pp = pp,
+                CategoryDifficulty = categoryDifficulty
+            };
+            return Ok(output);
         }
     }
 }
