@@ -90,7 +90,7 @@ namespace SanDoku.Controllers
         /// <param name="ppInput">diffcalc values and score values</param>
         /// <returns></returns>
         [HttpPost("pp")]
-        public IActionResult CalcPp([FromBody] PpInput ppInput)
+        public ActionResult<PpOutput> CalcPp([FromBody] PpInput ppInput)
         {
             if (ppInput?.ScoreInfo == null || ppInput.DiffCalcResult == null) return BadRequest();
 
