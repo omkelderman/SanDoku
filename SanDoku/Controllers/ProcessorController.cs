@@ -133,7 +133,7 @@ namespace SanDoku.Controllers
             var output = new PpOutput
             {
                 Pp = pp,
-                CategoryDifficulty = categoryDifficulty
+                ExtraValues = categoryDifficulty
             };
             return Ok(output);
         }
