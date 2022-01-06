@@ -34,7 +34,7 @@ namespace SanDoku.Controllers
         [HttpPost("diff")]
         [SuppressModelStateInvalidFilter]
         [Consumes(OsuInputFormatter.ContentType, OsuInputFormatter.WrongButLegacyContentType)]
-        public async Task<ActionResult<DiffResult>> CalcDiff([FromBody] Beatmap beatmap, [FromQuery] LegacyGameMode? mode = null,
+        public ActionResult<DiffResult> CalcDiff([FromBody] Beatmap beatmap, [FromQuery] LegacyGameMode? mode = null,
             [FromQuery] LegacyMods mods = LegacyMods.None, CancellationToken ct = default)
         {
             if (beatmap == null) return BadRequest();
@@ -71,7 +71,7 @@ namespace SanDoku.Controllers
             var workingBeatmap = new ProcessorWorkingBeatmap(beatmap);
 
             _logger.LogDebug($"[{beatmapInfoStr}] start processing...");
-            var (diffCalcResult, beatmapGameMode, gameModeUsed, modsUsed) = await rulesetUtil.CalculateDifficultyAttributes(workingBeatmap, filtered, ct);
+            var (diffCalcResult, beatmapGameMode, gameModeUsed, modsUsed) = rulesetUtil.CalculateDifficultyAttributes(workingBeatmap, filtered, ct);
             _logger.LogDebug($"[{beatmapInfoStr}] processing done!");
 
             var result = new DiffResult

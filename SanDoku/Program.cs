@@ -10,7 +10,6 @@ namespace SanDoku
         public static void Main(string[] args)
         {
             LegacyDifficultyCalculatorBeatmapDecoder.Register();
-            RulesetUtil.GetForLegacyGameMode(LegacyGameMode.Osu);
             CreateHostBuilder(args).Build().Run();
         }
 

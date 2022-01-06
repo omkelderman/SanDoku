@@ -1,6 +1,4 @@
-﻿using osu.Framework.Audio.Track;
-using osu.Framework.Graphics.Textures;
-using osu.Game.Beatmaps;
+﻿using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Catch;
@@ -15,15 +13,11 @@ using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Rulesets.Taiko.Difficulty;
 using osu.Game.Scoring.Legacy;
-using osu.Game.Skinning;
-using osu.Game.Utils;
 using SanDoku.Models;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace SanDoku.Util
 {
@@ -43,30 +37,15 @@ namespace SanDoku.Util
             throw new ArgumentOutOfRangeException(nameof(gameMode), gameMode, $"game mode {gameMode} does not exist");
         }
 
-        private static LegacyMods GetDifficultyAffectingLegacyModsForRuleset(Ruleset ruleset)
-        {
-            var emptyDummyBeatmap = new EmptyWorkingBeatmap(new BeatmapInfo
-            {
-                Ruleset = ruleset.RulesetInfo,
-                BaseDifficulty = new BeatmapDifficulty()
-            });
-            var difficultyAdjustmentModCombinations = ruleset.CreateDifficultyCalculator(emptyDummyBeatmap).CreateDifficultyAdjustmentModCombinations();
-            var mods = ModUtils.FlattenMods(difficultyAdjustmentModCombinations)
-                .Where(mod => mod is not ModNoMod)
-                .Distinct()
-                .ToArray();
-            return ruleset.ConvertToLegacyMods(mods);
-        }
-
         protected readonly LegacyGameMode LegacyGameMode;
         protected readonly Ruleset Ruleset;
         protected LegacyMods DifficultyAffectingLegacyMods { get; set; }
 
         protected RulesetUtil(LegacyGameMode legacyGameMode, Ruleset ruleset)
         {
-            Ruleset = ruleset;
             LegacyGameMode = legacyGameMode;
-            DifficultyAffectingLegacyMods = GetDifficultyAffectingLegacyModsForRuleset(ruleset);
+            Ruleset = ruleset;
+            DifficultyAffectingLegacyMods = LegacyModsUtil.GetDifficultyAffectingLegacyModsForRuleset(Ruleset);
         }
 
         public void AddRulesetInfoToBeatmapInfo(BeatmapInfo beatmapInfo)
@@ -85,19 +64,27 @@ namespace SanDoku.Util
             }
         }
 
-        public abstract Task<(DiffCalcResult diffCalcResult, LegacyGameMode beatmapGameMode, LegacyGameMode gameModeUsed, LegacyMods modsUsed)>
+        public abstract (DiffCalcResult diffCalcResult, LegacyGameMode beatmapGameMode, LegacyGameMode gameModeUsed, LegacyMods modsUsed)
             CalculateDifficultyAttributes(IWorkingBeatmap beatmap, IEnumerable<Mod> mods, CancellationToken ct);
 
         public abstract (double pp, Dictionary<string, double> categoryDifficulty) CalculatePerformance(DiffCalcResult diffResult, ScoreInfo scoreInfo);
     }
 
-    public abstract class RulesetUtil<TRuleset, TDiffAttr> : RulesetUtil where TRuleset : Ruleset, new() where TDiffAttr : DifficultyAttributes, new()
+    public abstract class RulesetUtil<TRuleset> : RulesetUtil where TRuleset : Ruleset, ILegacyRuleset, new()
     {
-        protected RulesetUtil(LegacyGameMode legacyGameMode) : base(legacyGameMode, new TRuleset())
+        protected RulesetUtil(TRuleset ruleset) : base((LegacyGameMode) ruleset.LegacyID, ruleset)
+        {
+        }
+    }
+
+    public abstract class RulesetUtil<TRuleset, TDiffAttr> : RulesetUtil<TRuleset> where TRuleset : Ruleset, ILegacyRuleset, new()
+        where TDiffAttr : DifficultyAttributes, new()
+    {
+        protected RulesetUtil() : base(new TRuleset())
         {
         }
 
-        public override async Task<(DiffCalcResult diffCalcResult, LegacyGameMode beatmapGameMode, LegacyGameMode gameModeUsed, LegacyMods modsUsed)>
+        public override (DiffCalcResult diffCalcResult, LegacyGameMode beatmapGameMode, LegacyGameMode gameModeUsed, LegacyMods modsUsed)
             CalculateDifficultyAttributes(IWorkingBeatmap beatmap, IEnumerable<Mod> mods, CancellationToken ct)
         {
             DifficultyCalculator calculator;
@@ -106,8 +93,7 @@ namespace SanDoku.Util
                 calculator = Ruleset.CreateDifficultyCalculator(beatmap);
             }
 
-            // TODO possibly find a way to make this better
-            var diffAttr = await Task.Run(() => calculator.Calculate(mods, ct), ct);
+            var diffAttr = calculator.Calculate(mods, ct);
             if (diffAttr is not TDiffAttr tDiff)
             {
                 throw new InvalidOperationException(
@@ -180,29 +166,8 @@ namespace SanDoku.Util
         protected abstract void Map(TDiffAttr tDiff, DiffCalcResult diffCalcResult);
     }
 
-    internal class EmptyWorkingBeatmap : WorkingBeatmap
-    {
-        public EmptyWorkingBeatmap(BeatmapInfo beatmapInfo) : base(beatmapInfo, null)
-        {
-        }
-
-        protected override IBeatmap GetBeatmap() => throw new NotImplementedException();
-
-        protected override Texture GetBackground() => throw new NotImplementedException();
-
-        protected override Track GetBeatmapTrack() => throw new NotImplementedException();
-
-        protected override ISkin GetSkin() => throw new NotImplementedException();
-
-        public override Stream GetStream(string storagePath) => throw new NotImplementedException();
-    }
-
     public class OsuRulesetUtil : RulesetUtil<OsuRuleset, OsuDifficultyAttributes>
     {
-        public OsuRulesetUtil() : base(LegacyGameMode.Osu)
-        {
-        }
-
         protected override void Map(DiffCalcResult diffCalcResult, OsuDifficultyAttributes osuDiff)
         {
             diffCalcResult.AimStrain = osuDiff.AimStrain;
@@ -234,10 +199,6 @@ namespace SanDoku.Util
 
     public class TaikoRulesetUtil : RulesetUtil<TaikoRuleset, TaikoDifficultyAttributes>
     {
-        public TaikoRulesetUtil() : base(LegacyGameMode.Taiko)
-        {
-        }
-
         protected override void Map(DiffCalcResult diffCalcResult, TaikoDifficultyAttributes taikoDiff)
         {
             diffCalcResult.ApproachRate = taikoDiff.ApproachRate;
@@ -259,10 +220,6 @@ namespace SanDoku.Util
 
     public class CatchRulesetUtil : RulesetUtil<CatchRuleset, CatchDifficultyAttributes>
     {
-        public CatchRulesetUtil() : base(LegacyGameMode.Catch)
-        {
-        }
-
         protected override void Map(DiffCalcResult diffCalcResult, CatchDifficultyAttributes catchDiff)
         {
             diffCalcResult.ApproachRate = catchDiff.ApproachRate;
@@ -276,10 +233,6 @@ namespace SanDoku.Util
 
     public class ManiaRulesetUtil : RulesetUtil<ManiaRuleset, ManiaDifficultyAttributes>
     {
-        public ManiaRulesetUtil() : base(LegacyGameMode.Mania)
-        {
-        }
-
         protected override void Map(DiffCalcResult diffCalcResult, ManiaDifficultyAttributes maniaDiff)
         {
             diffCalcResult.GreatHitWindow = maniaDiff.GreatHitWindow;
