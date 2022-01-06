@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace SanDoku.Util
+namespace SanDoku.Extensions
 {
     public static class ListExtensions
     {

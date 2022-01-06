@@ -14,20 +14,7 @@ namespace SanDoku.Util
 {
     public static class LegacyModsUtil
     {
-        public static LegacyMods GetDifficultyAffectingLegacyModsForRuleset(Ruleset ruleset)
-        {
-            var emptyDummyBeatmap = new EmptyWorkingBeatmap(new BeatmapInfo
-            {
-                Ruleset = ruleset.RulesetInfo,
-                BaseDifficulty = new BeatmapDifficulty()
-            });
-            var difficultyAdjustmentModCombinations = ruleset.CreateDifficultyCalculator(emptyDummyBeatmap).CreateDifficultyAdjustmentModCombinations();
-            var mods = ModUtils.FlattenMods(difficultyAdjustmentModCombinations)
-                .Where(mod => mod is not ModNoMod)
-                .Distinct()
-                .ToArray();
-            return ruleset.ConvertToLegacyMods(mods);
-        }
+        private static readonly LegacyMods AllDefined = Enum.GetValues<LegacyMods>().Aggregate(LegacyMods.None, (current, m) => current | m);
 
         private class EmptyWorkingBeatmap : WorkingBeatmap
         {
@@ -46,5 +33,24 @@ namespace SanDoku.Util
             public override Stream GetStream(string storagePath) => throw new NotImplementedException();
         }
 
+        public static LegacyMods GetDifficultyAffectingLegacyModsForRuleset(Ruleset ruleset)
+        {
+            var emptyDummyBeatmap = new EmptyWorkingBeatmap(new BeatmapInfo
+            {
+                Ruleset = ruleset.RulesetInfo,
+                BaseDifficulty = new BeatmapDifficulty()
+            });
+            var difficultyAdjustmentModCombinations = ruleset.CreateDifficultyCalculator(emptyDummyBeatmap).CreateDifficultyAdjustmentModCombinations();
+            var mods = ModUtils.FlattenMods(difficultyAdjustmentModCombinations)
+                .Where(mod => mod is not ModNoMod)
+                .Distinct()
+                .ToArray();
+            return ruleset.ConvertToLegacyMods(mods);
+        }
+
+        public static bool IsDefined(LegacyMods mods)
+        {
+            return (mods & AllDefined) == mods;
+        }
     }
 }

@@ -58,9 +58,14 @@ namespace SanDoku.Util
         public IEnumerable<Mod> ConvertFromLegacyModsFilteredByDifficultyAffecting(LegacyMods legacyMods)
         {
             var filteredLegacyMods = legacyMods & DifficultyAffectingLegacyMods;
+            return ConvertFromLegacyMods(filteredLegacyMods);
+        }
+
+        public IEnumerable<Mod> ConvertFromLegacyMods(LegacyMods legacyMods)
+        {
             lock (Ruleset)
             {
-                return Ruleset.ConvertFromLegacyMods(filteredLegacyMods);
+                return Ruleset.ConvertFromLegacyMods(legacyMods);
             }
         }
 

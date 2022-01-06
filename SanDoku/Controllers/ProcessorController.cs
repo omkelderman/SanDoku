@@ -3,13 +3,14 @@ using Microsoft.Extensions.Logging;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;
 using osu.Game.Utils;
+using SanDoku.Extensions;
 using SanDoku.Models;
 using SanDoku.Util;
 using System;
+using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace SanDoku.Controllers
 {
@@ -35,27 +36,32 @@ namespace SanDoku.Controllers
         [HttpPost("diff")]
         [SuppressModelStateInvalidFilter]
         [Consumes(OsuInputFormatter.ContentType, OsuInputFormatter.WrongButLegacyContentType)]
+        [ProducesResponseType(typeof(DiffResult), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), (int) HttpStatusCode.BadRequest)]
         public ActionResult<DiffResult> CalcDiff([FromBody] Beatmap beatmap, [FromQuery] LegacyGameMode? mode = null,
             [FromQuery] LegacyMods mods = LegacyMods.None, CancellationToken ct = default)
         {
-            if (beatmap == null) return BadRequest("Empty input");
-            var beatmapInfoStr = beatmap.BeatmapInfo.ToString();
-
-            // we're using [SuppressModelStateInvalidFilter] because the Beatmap object from osu lib can throw off the validator for old beatmap objects that do not contain certain required properties
-            // we are however interested in validating mode and mods so lets do that manually
-            if (ModelState.TryGetValue(nameof(mode), out var modeState) && modeState.ValidationState != ModelValidationState.Valid)
+            ModelState.RemoveKeysExcept(nameof(mode), nameof(mods));
+            string beatmapInfoStr;
+            if (beatmap == null)
             {
-                _logger.LogDebug($"[{beatmapInfoStr}] Invalid game mode requested: {modeState.AttemptedValue}");
-                return BadRequest($"Invalid game mode value: {modeState.AttemptedValue}");
+                ModelState.AddModelError(nameof(beatmap), "Empty input not valid");
+                beatmapInfoStr = "Unknown";
+            }
+            else
+            {
+                beatmapInfoStr = beatmap.ToString();
             }
 
-            if (ModelState.TryGetValue(nameof(mods), out var modsState) && modsState.ValidationState != ModelValidationState.Valid)
+            if (!ModelState.IsValid)
             {
-                _logger.LogDebug($"[{beatmapInfoStr}] Invalid mods requested: {modsState.AttemptedValue}");
-                return BadRequest($"Invalid mods value: {modsState.AttemptedValue}");
+                _logger.LogDebug($"[{beatmapInfoStr}] validation errors: {ModelState.ToErrorMessage()}");
+                return ValidationProblem();
             }
 
-            // at this point both the mode and mods values are guaranteed to contain valid values
+            // IntelliSense doesn't know, but if beatmap was null, then the ModelState would be invalid
+            // and we would have stopped the request already
+            Debug.Assert(beatmap != null);
 
             var modeToPick = mode ?? (LegacyGameMode) beatmap.BeatmapInfo.RulesetID;
             var rulesetUtil = RulesetUtil.GetForLegacyGameMode(modeToPick);
@@ -65,7 +71,8 @@ namespace SanDoku.Controllers
             {
                 var invalidModsStr = string.Join(',', invalid.Select(mod => mod.Acronym));
                 _logger.LogDebug($"Invalid mod combination requested {invalidModsStr} for map {beatmapInfoStr}");
-                return BadRequest($"invalid mod combination: {invalidModsStr}");
+                ModelState.AddModelError(nameof(mods), $"invalid mod combination: {invalidModsStr}");
+                return ValidationProblem();
             }
 
             rulesetUtil.AddRulesetInfoToBeatmapInfo(beatmap.BeatmapInfo);
@@ -92,20 +99,36 @@ namespace SanDoku.Controllers
         /// <param name="ppInput">diffcalc values and score values</param>
         /// <returns></returns>
         [HttpPost("pp")]
+        [ProducesResponseType(typeof(PpOutput), (int)HttpStatusCode.OK)]
+        [ProducesResponseType(typeof(ValidationProblemDetails), (int)HttpStatusCode.BadRequest)]
         public ActionResult<PpOutput> CalcPp([FromBody] PpInput ppInput)
         {
-            if (ppInput?.ScoreInfo == null || ppInput.DiffCalcResult == null) return BadRequest();
+            if (!Enum.IsDefined(ppInput.GameMode)) ModelState.AddModelError(nameof(ppInput.GameMode), $"invalid game mode value: {ppInput.GameMode}");
+            if (!LegacyModsUtil.IsDefined(ppInput.ScoreInfo.Mods))
+                ModelState.AddModelError($"{nameof(ppInput.ScoreInfo)}.{nameof(ppInput.ScoreInfo.Mods)}", $"invalid mods value: {ppInput.ScoreInfo.Mods}");
 
-            if (!Enum.IsDefined(ppInput.GameMode))
+            if (!ModelState.IsValid)
             {
-                _logger.LogDebug($"Invalid game mode requested {ppInput.GameMode} for map pp calc");
-                return BadRequest($"invalid game mode: {ppInput.GameMode}");
+                _logger.LogDebug($"[pp-calc] validation errors: {ModelState.ToErrorMessage()}");
+                return ValidationProblem();
             }
 
             var rulesetUtil = RulesetUtil.GetForLegacyGameMode(ppInput.GameMode);
-            _logger.LogDebug("start calculating...");
+
+            // check if mods are illegal
+            var mods = rulesetUtil.ConvertFromLegacyMods(ppInput.ScoreInfo.Mods);
+            if (!ModUtils.CheckCompatibleSet(mods, out var invalid))
+            {
+                var invalidModsStr = string.Join(',', invalid.Select(mod => mod.Acronym));
+                _logger.LogDebug($"[pp-calc] invalid mod combination requested: {invalidModsStr}");
+                ModelState.AddModelError($"{nameof(ppInput.ScoreInfo)}.{nameof(ppInput.ScoreInfo.Mods)}", $"invalid mod combination: {invalidModsStr}");
+                return ValidationProblem();
+            }
+
+
+            _logger.LogDebug("[pp-calc] start calculating...");
             var (pp, categoryDifficulty) = rulesetUtil.CalculatePerformance(ppInput.DiffCalcResult, ppInput.ScoreInfo);
-            _logger.LogDebug("calculating done!");
+            _logger.LogDebug("[pp-calc] calculating done!");
 
             var output = new PpOutput
             {
