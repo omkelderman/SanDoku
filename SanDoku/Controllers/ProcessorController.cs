@@ -9,6 +9,7 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace SanDoku.Controllers
 {
@@ -37,25 +38,26 @@ namespace SanDoku.Controllers
         public ActionResult<DiffResult> CalcDiff([FromBody] Beatmap beatmap, [FromQuery] LegacyGameMode? mode = null,
             [FromQuery] LegacyMods mods = LegacyMods.None, CancellationToken ct = default)
         {
-            if (beatmap == null) return BadRequest();
+            if (beatmap == null) return BadRequest("Empty input");
             var beatmapInfoStr = beatmap.BeatmapInfo.ToString();
 
-            LegacyGameMode modeToPick;
-            if (mode.HasValue)
+            // we're using [SuppressModelStateInvalidFilter] because the Beatmap object from osu lib can throw off the validator for old beatmap objects that do not contain certain required properties
+            // we are however interested in validating mode and mods so lets do that manually
+            if (ModelState.TryGetValue(nameof(mode), out var modeState) && modeState.ValidationState != ModelValidationState.Valid)
             {
-                modeToPick = mode.Value;
-                if (!Enum.IsDefined(modeToPick))
-                {
-                    _logger.LogDebug($"Invalid game mode requested {modeToPick} for map {beatmapInfoStr}");
-                    return BadRequest($"invalid game mode: {modeToPick}");
-                }
-            }
-            else
-            {
-                modeToPick = (LegacyGameMode) beatmap.BeatmapInfo.RulesetID;
+                _logger.LogDebug($"[{beatmapInfoStr}] Invalid game mode requested: {modeState.AttemptedValue}");
+                return BadRequest($"Invalid game mode value: {modeState.AttemptedValue}");
             }
 
+            if (ModelState.TryGetValue(nameof(mods), out var modsState) && modsState.ValidationState != ModelValidationState.Valid)
+            {
+                _logger.LogDebug($"[{beatmapInfoStr}] Invalid mods requested: {modsState.AttemptedValue}");
+                return BadRequest($"Invalid mods value: {modsState.AttemptedValue}");
+            }
 
+            // at this point both the mode and mods values are guaranteed to contain valid values
+
+            var modeToPick = mode ?? (LegacyGameMode) beatmap.BeatmapInfo.RulesetID;
             var rulesetUtil = RulesetUtil.GetForLegacyGameMode(modeToPick);
             var filtered = rulesetUtil.ConvertFromLegacyModsFilteredByDifficultyAffecting(mods).ToList();
 
@@ -101,7 +103,9 @@ namespace SanDoku.Controllers
             }
 
             var rulesetUtil = RulesetUtil.GetForLegacyGameMode(ppInput.GameMode);
+            _logger.LogDebug("start calculating...");
             var (pp, categoryDifficulty) = rulesetUtil.CalculatePerformance(ppInput.DiffCalcResult, ppInput.ScoreInfo);
+            _logger.LogDebug("calculating done!");
 
             var output = new PpOutput
             {
