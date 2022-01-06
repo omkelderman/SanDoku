@@ -13,11 +13,13 @@ namespace SanDoku.Util
 {
     public class OsuInputFormatter : TextInputFormatter
     {
-        public const string ContentType = "plain/osu";
+        public const string ContentType = "text/osu";
+        public const string WrongButLegacyContentType = "plain/osu";
 
         public OsuInputFormatter()
         {
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse(ContentType));
+            SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse(WrongButLegacyContentType));
             SupportedEncodings.Add(Encoding.UTF8);
         }
 

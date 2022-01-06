@@ -26,14 +26,14 @@ namespace SanDoku.Controllers
         /// <summary>
         /// Process a .osu file and calculate all difficulty properties of the map
         /// </summary>
-        /// <param name="beatmap">The contents of an .osu file, must be Content-Type of "text/osu", optionally supports Content-Encoding "gzip", "deflate" and "br"</param>
+        /// <param name="beatmap">The contents of an .osu file, must be the correct Content-Type, optionally supports Content-Encoding "gzip", "deflate" and "br"</param>
         /// <param name="mode">Override game mode</param>
         /// <param name="mods">Optionally provide mods</param>
         /// <param name="ct"></param>
         /// <returns></returns>
         [HttpPost("diff")]
         [SuppressModelStateInvalidFilter]
-        [Consumes(OsuInputFormatter.ContentType)]
+        [Consumes(OsuInputFormatter.ContentType, OsuInputFormatter.WrongButLegacyContentType)]
         public async Task<ActionResult<DiffResult>> CalcDiff([FromBody] Beatmap beatmap, [FromQuery] LegacyGameMode? mode = null,
             [FromQuery] LegacyMods mods = LegacyMods.None, CancellationToken ct = default)
         {
