@@ -34,7 +34,7 @@ namespace SanDoku.Controllers
         /// <param name="ct"></param>
         /// <returns></returns>
         [HttpPost("diff")]
-        [Consumes(OsuInputFormatter.ContentType, OsuInputFormatter.WrongButLegacyContentType)]
+        [Consumes(OsuInputFormatter.ContentType)]
         [ProducesResponseType(typeof(DiffResult), (int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(ValidationProblemDetails), (int) HttpStatusCode.BadRequest)]
         public ActionResult<DiffResult> CalcDiff([FromBody, JsonSchemaType(typeof(byte[]))] BeatmapInput beatmap, [FromQuery] LegacyGameMode? mode = null,
