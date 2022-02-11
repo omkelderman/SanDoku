@@ -1,13 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;
 using osu.Game.Utils;
 using SanDoku.Extensions;
 using SanDoku.Models;
 using SanDoku.Util;
 using System;
-using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Threading;
@@ -34,63 +32,54 @@ namespace SanDoku.Controllers
         /// <param name="ct"></param>
         /// <returns></returns>
         [HttpPost("diff")]
-        [SuppressModelStateInvalidFilter]
         [Consumes(OsuInputFormatter.ContentType, OsuInputFormatter.WrongButLegacyContentType)]
         [ProducesResponseType(typeof(DiffResult), (int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(ValidationProblemDetails), (int) HttpStatusCode.BadRequest)]
-        public ActionResult<DiffResult> CalcDiff([FromBody] Beatmap beatmap, [FromQuery] LegacyGameMode? mode = null,
+        public ActionResult<DiffResult> CalcDiff([FromBody] BeatmapInput beatmap, [FromQuery] LegacyGameMode? mode = null,
             [FromQuery] LegacyMods mods = LegacyMods.None, CancellationToken ct = default)
         {
-            ModelState.RemoveKeysExcept(nameof(mode), nameof(mods));
-            string beatmapInfoStr;
-            if (beatmap == null)
+            if (beatmap.ContentLength == 0)
             {
+                _logger.LogDebug("[diff-calc] empty input error");
                 ModelState.AddModelError(nameof(beatmap), "Empty input not valid");
-                beatmapInfoStr = "Unknown";
-            }
-            else
-            {
-                beatmapInfoStr = beatmap.ToString();
-            }
-
-            if (!ModelState.IsValid)
-            {
-                _logger.LogDebug($"[{beatmapInfoStr}] validation errors: {ModelState.ToErrorMessage()}");
                 return ValidationProblem();
             }
 
-            // IntelliSense doesn't know, but if beatmap was null, then the ModelState would be invalid
-            // and we would have stopped the request already
-            Debug.Assert(beatmap != null);
+            // this next call is expensive, and osu does not provide an async variant,
+            // hence why we're doing it here where we're already inside a thread-pool within the controller context (so doing expensive work, while not ideal, is ok)
+            // and not within the InputFormatter where everything needs to be async
+            var beatmapActual  = beatmap.DecodeBeatmap();
+            _logger.LogInformation("[diff-calc] [{md5}] {beatmapActual}", beatmap.Md5Checksum, beatmapActual.ToString());
 
-            var modeToPick = mode ?? (LegacyGameMode) beatmap.BeatmapInfo.RulesetID;
+            var modeToPick = mode ?? (LegacyGameMode) beatmapActual.BeatmapInfo.RulesetID;
             var rulesetUtil = RulesetUtil.GetForLegacyGameMode(modeToPick);
             var filtered = rulesetUtil.ConvertFromLegacyModsFilteredByDifficultyAffecting(mods).ToList();
 
             if (!ModUtils.CheckCompatibleSet(filtered, out var invalid))
             {
                 var invalidModsStr = string.Join(',', invalid.Select(mod => mod.Acronym));
-                _logger.LogDebug($"Invalid mod combination requested {invalidModsStr} for map {beatmapInfoStr}");
+                _logger.LogDebug("Invalid mod combination requested {invalidModsStr} for map {md5}", invalidModsStr, beatmap.Md5Checksum);
                 ModelState.AddModelError(nameof(mods), $"invalid mod combination: {invalidModsStr}");
                 return ValidationProblem();
             }
 
-            rulesetUtil.AddRulesetInfoToBeatmapInfo(beatmap.BeatmapInfo);
+            rulesetUtil.AddRulesetInfoToBeatmapInfo(beatmapActual.BeatmapInfo);
 
-            var workingBeatmap = new ProcessorWorkingBeatmap(beatmap);
+            var workingBeatmap = new ProcessorWorkingBeatmap(beatmapActual);
 
-            _logger.LogDebug($"[{beatmapInfoStr}] start processing...");
+            _logger.LogDebug("[diff-calc] [{md5}] start processing...", beatmap.Md5Checksum);
             var (diffCalcResult, beatmapGameMode, gameModeUsed, modsUsed) = rulesetUtil.CalculateDifficultyAttributes(workingBeatmap, filtered, ct);
-            _logger.LogDebug($"[{beatmapInfoStr}] processing done!");
+            _logger.LogDebug("[diff-calc] [{md5}] processing done!", beatmap.Md5Checksum);
 
             var result = new DiffResult
             {
                 BeatmapGameMode = beatmapGameMode,
+                BeatmapMd5 = beatmap.Md5Checksum,
                 GameModeUsed = gameModeUsed,
                 ModsUsed = modsUsed,
                 DiffCalcResult = diffCalcResult
             };
-            return Ok(result);
+            return result;
         }
 
         /// <summary>
@@ -109,7 +98,7 @@ namespace SanDoku.Controllers
 
             if (!ModelState.IsValid)
             {
-                _logger.LogDebug($"[pp-calc] validation errors: {ModelState.ToErrorMessage()}");
+                _logger.LogDebug("[pp-calc] validation errors: {error}", ModelState.ToErrorMessage());
                 return ValidationProblem();
             }
 
@@ -120,7 +109,7 @@ namespace SanDoku.Controllers
             if (!ModUtils.CheckCompatibleSet(mods, out var invalid))
             {
                 var invalidModsStr = string.Join(',', invalid.Select(mod => mod.Acronym));
-                _logger.LogDebug($"[pp-calc] invalid mod combination requested: {invalidModsStr}");
+                _logger.LogDebug("[pp-calc] invalid mod combination requested: {invalidModsStr}", invalidModsStr);
                 ModelState.AddModelError($"{nameof(ppInput.ScoreInfo)}.{nameof(ppInput.ScoreInfo.Mods)}", $"invalid mod combination: {invalidModsStr}");
                 return ValidationProblem();
             }
@@ -135,7 +124,7 @@ namespace SanDoku.Controllers
                 Pp = pp,
                 ExtraValues = categoryDifficulty
             };
-            return Ok(output);
+            return output;
         }
     }
 }

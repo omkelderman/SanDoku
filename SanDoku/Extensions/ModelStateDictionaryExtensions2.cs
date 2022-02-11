@@ -18,14 +18,5 @@ namespace SanDoku.Extensions
                 });
             return string.Join(", ", errors);
         }
-
-        public static void RemoveKeysExcept(this ModelStateDictionary modelState, params string[] keys)
-        {
-            foreach (var key in modelState.Keys.Where(key => !keys.Contains(key)))
-            {
-                modelState.Remove(key);
-            }
-        }
-
     }
 }

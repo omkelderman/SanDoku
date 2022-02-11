@@ -2,10 +2,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
-using osu.Game.Beatmaps;
-using osu.Game.IO;
+using SanDoku.Models;
 using System;
-using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -25,7 +23,7 @@ namespace SanDoku.Util
 
         protected override bool CanReadType(Type type)
         {
-            return type == typeof(Beatmap);
+            return type == typeof(BeatmapInput);
         }
 
         public override async Task<InputFormatterResult> ReadRequestBodyAsync(InputFormatterContext context, Encoding effectiveEncoding)
@@ -42,26 +40,14 @@ namespace SanDoku.Util
 
             try
             {
-                var memStream = new MemoryStream();
-                await httpContext.Request.Body.CopyToAsync(memStream);
-                // TODO possibly find a way to make this better
-                var beatmap = await Task.Run(() => DecodeBeatmap(memStream));
-                return await InputFormatterResult.SuccessAsync(beatmap);
+                var beatmapInput = await BeatmapInput.BuildFromStream(httpContext.Request.Body);
+                return await InputFormatterResult.SuccessAsync(beatmapInput);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error while reading osu file content");
                 return await InputFormatterResult.FailureAsync();
             }
-        }
-
-        private static Beatmap DecodeBeatmap(MemoryStream memStream)
-        {
-            memStream.Position = 0;
-            using var reader = new LineBufferedReader(memStream);
-            var decoder = osu.Game.Beatmaps.Formats.Decoder.GetDecoder<Beatmap>(reader);
-            var beatmap = decoder.Decode(reader);
-            return beatmap;
         }
     }
 }

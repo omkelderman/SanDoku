@@ -6,6 +6,7 @@ namespace SanDoku.Models
     public class DiffResult
     {
         public LegacyGameMode BeatmapGameMode { get; set; }
+        public string BeatmapMd5 { get; set; }
 
         public LegacyGameMode GameModeUsed { get; set; }
 
