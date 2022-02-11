@@ -15,7 +15,6 @@ namespace SanDoku.Models
         public string Md5Checksum { get; }
         public long ContentLength => _memoryStream.Length;
 
-
         private BeatmapInput(MemoryStream memoryStream, string md5Checksum)
         {
             _memoryStream = memoryStream;

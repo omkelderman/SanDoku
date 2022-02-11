@@ -31,7 +31,11 @@ namespace SanDoku
                 o.Providers.Add<DeflateDecompressionProvider>();
                 o.Providers.Add<GzipDecompressionProvider>();
             });
-            services.AddControllers(o => { o.InputFormatters.Add(new OsuInputFormatter()); });
+            services.AddControllers(o =>
+            {
+                o.InputFormatters.Add(new OsuInputFormatter());
+                o.AllowEmptyInputInBodyModelBinding = true;
+            });
             services.AddSwaggerDocument(options =>
             {
                 options.TypeMappers.Add(new PrimitiveTypeMapper(typeof(Beatmap), s =>

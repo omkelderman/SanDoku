@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using NJsonSchema.Annotations;
+using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;
 using osu.Game.Utils;
 using SanDoku.Extensions;
@@ -35,20 +37,31 @@ namespace SanDoku.Controllers
         [Consumes(OsuInputFormatter.ContentType, OsuInputFormatter.WrongButLegacyContentType)]
         [ProducesResponseType(typeof(DiffResult), (int)HttpStatusCode.OK)]
         [ProducesResponseType(typeof(ValidationProblemDetails), (int) HttpStatusCode.BadRequest)]
-        public ActionResult<DiffResult> CalcDiff([FromBody] BeatmapInput beatmap, [FromQuery] LegacyGameMode? mode = null,
+        public ActionResult<DiffResult> CalcDiff([FromBody, JsonSchemaType(typeof(byte[]))] BeatmapInput beatmap, [FromQuery] LegacyGameMode? mode = null,
             [FromQuery] LegacyMods mods = LegacyMods.None, CancellationToken ct = default)
         {
-            if (beatmap.ContentLength == 0)
+            if (beatmap == null || beatmap.ContentLength == 0)
             {
                 _logger.LogDebug("[diff-calc] empty input error");
                 ModelState.AddModelError(nameof(beatmap), "Empty input not valid");
                 return ValidationProblem();
             }
 
-            // this next call is expensive, and osu does not provide an async variant,
-            // hence why we're doing it here where we're already inside a thread-pool within the controller context (so doing expensive work, while not ideal, is ok)
-            // and not within the InputFormatter where everything needs to be async
-            var beatmapActual  = beatmap.DecodeBeatmap();
+            IBeatmap beatmapActual;
+            try
+            {
+                // this next call is expensive, and osu does not provide an async variant,
+                // hence why we're doing it here where we're already inside a thread-pool within the controller context (so doing expensive work, while not ideal, is ok)
+                // and not within the InputFormatter where everything needs to be async
+                beatmapActual = beatmap.DecodeBeatmap();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "[diff-calc] input parse error");
+                ModelState.AddModelError(nameof(beatmap), $"parse error: {ex.GetType()}: {ex.Message}");
+                return ValidationProblem();
+            }
+
             _logger.LogInformation("[diff-calc] [{md5}] {beatmapActual}", beatmap.Md5Checksum, beatmapActual.ToString());
 
             var modeToPick = mode ?? (LegacyGameMode) beatmapActual.BeatmapInfo.RulesetID;
