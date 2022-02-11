@@ -127,15 +127,14 @@ namespace SanDoku.Controllers
                 return ValidationProblem();
             }
 
-
             _logger.LogDebug("[pp-calc] start calculating...");
             var (pp, categoryDifficulty) = rulesetUtil.CalculatePerformance(ppInput.DiffCalcResult, ppInput.ScoreInfo);
             _logger.LogDebug("[pp-calc] calculating done!");
 
             var output = new PpOutput
             {
-                Pp = pp,
-                ExtraValues = categoryDifficulty
+                Pp = pp.NaNOrInfinityToNull(),
+                ExtraValues = categoryDifficulty.ToDictionary(x => x.Key, x => x.Value.NaNOrInfinityToNull())
             };
             return output;
         }

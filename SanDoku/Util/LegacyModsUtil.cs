@@ -14,7 +14,7 @@ namespace SanDoku.Util
 {
     public static class LegacyModsUtil
     {
-        private static readonly LegacyMods AllDefined = Enum.GetValues<LegacyMods>().Aggregate(LegacyMods.None, (current, m) => current | m);
+        private static readonly LegacyMods AllDefined = Enum.GetValues<LegacyMods>().Aggregate((current, m) => current | m);
 
         private class EmptyWorkingBeatmap : WorkingBeatmap
         {
