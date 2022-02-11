@@ -38,21 +38,21 @@ namespace SanDoku.Util
         }
 
         protected readonly LegacyGameMode LegacyGameMode;
-        protected readonly Ruleset Ruleset;
+        private readonly Ruleset _ruleset;
         protected LegacyMods DifficultyAffectingLegacyMods { get; set; }
 
         protected RulesetUtil(LegacyGameMode legacyGameMode, Ruleset ruleset)
         {
             LegacyGameMode = legacyGameMode;
-            Ruleset = ruleset;
-            DifficultyAffectingLegacyMods = LegacyModsUtil.GetDifficultyAffectingLegacyModsForRuleset(Ruleset);
+            _ruleset = ruleset;
+            DifficultyAffectingLegacyMods = LegacyModsUtil.GetDifficultyAffectingLegacyModsForRuleset(_ruleset);
         }
 
         public void AddRulesetInfoToBeatmapInfo(BeatmapInfo beatmapInfo)
         {
-            var beatmapGameMode = (LegacyGameMode) beatmapInfo.RulesetID;
+            var beatmapGameMode = (LegacyGameMode)beatmapInfo.RulesetID;
             var beatmapRulesetUtil = GetForLegacyGameMode(beatmapGameMode);
-            beatmapInfo.Ruleset = beatmapRulesetUtil.Ruleset.RulesetInfo;
+            beatmapInfo.Ruleset = beatmapRulesetUtil._ruleset.RulesetInfo;
         }
 
         public IEnumerable<Mod> ConvertFromLegacyModsFilteredByDifficultyAffecting(LegacyMods legacyMods)
@@ -61,96 +61,50 @@ namespace SanDoku.Util
             return ConvertFromLegacyMods(filteredLegacyMods);
         }
 
-        public IEnumerable<Mod> ConvertFromLegacyMods(LegacyMods legacyMods)
+        private IEnumerable<Mod> ConvertFromLegacyMods(LegacyMods legacyMods)
         {
-            lock (Ruleset)
+            lock (_ruleset)
             {
-                return Ruleset.ConvertFromLegacyMods(legacyMods);
+                return _ruleset.ConvertFromLegacyMods(legacyMods);
             }
         }
 
-        public abstract (DiffCalcResult diffCalcResult, LegacyGameMode beatmapGameMode, LegacyGameMode gameModeUsed, LegacyMods modsUsed)
-            CalculateDifficultyAttributes(IWorkingBeatmap beatmap, IEnumerable<Mod> mods, CancellationToken ct);
-
-        public abstract (double pp, Dictionary<string, double> categoryDifficulty) CalculatePerformance(DiffCalcResult diffResult, ScoreInfo scoreInfo);
-    }
-
-    public abstract class RulesetUtil<TRuleset> : RulesetUtil where TRuleset : Ruleset, ILegacyRuleset, new()
-    {
-        protected RulesetUtil(TRuleset ruleset) : base((LegacyGameMode) ruleset.LegacyID, ruleset)
+        protected LegacyMods ConvertToLegacyMods(Mod[] mods)
         {
-        }
-    }
-
-    public abstract class RulesetUtil<TRuleset, TDiffAttr> : RulesetUtil<TRuleset> where TRuleset : Ruleset, ILegacyRuleset, new()
-        where TDiffAttr : DifficultyAttributes, new()
-    {
-        protected RulesetUtil() : base(new TRuleset())
-        {
+            lock (_ruleset)
+            {
+                return _ruleset.ConvertToLegacyMods(mods);
+            }
         }
 
-        public override (DiffCalcResult diffCalcResult, LegacyGameMode beatmapGameMode, LegacyGameMode gameModeUsed, LegacyMods modsUsed)
-            CalculateDifficultyAttributes(IWorkingBeatmap beatmap, IEnumerable<Mod> mods, CancellationToken ct)
+        public ScoreInfoWithNewStyleModArray MapToScoreInfoObjectWithNewStyleMods(ScoreInfo scoreInfo)
         {
-            DifficultyCalculator calculator;
-            lock (Ruleset)
-            {
-                calculator = Ruleset.CreateDifficultyCalculator(beatmap);
-            }
-
-            var diffAttr = calculator.Calculate(mods, ct);
-            if (diffAttr is not TDiffAttr tDiff)
-            {
-                throw new InvalidOperationException(
-                    $"unexpected DifficultyAttributes type {diffAttr.GetType().FullName}, expected {typeof(TDiffAttr).FullName}");
-            }
-
-            LegacyMods legacyModsUsed;
-            lock (Ruleset)
-            {
-                legacyModsUsed = Ruleset.ConvertToLegacyMods(tDiff.Mods);
-            }
-
-            var diff = new DiffCalcResult
-            {
-                StarRating = tDiff.StarRating,
-                MaxCombo = tDiff.MaxCombo
-            };
-            Map(diff, tDiff);
-            return (diff, (LegacyGameMode) beatmap.Beatmap.BeatmapInfo.RulesetID, LegacyGameMode, legacyModsUsed);
+            var mods = ConvertFromLegacyMods(scoreInfo.Mods).ToArray();
+            return new ScoreInfoWithNewStyleModArray { Mods = mods, ScoreInfo = scoreInfo };
         }
 
-        public override (double pp, Dictionary<string, double> categoryDifficulty) CalculatePerformance(DiffCalcResult diffResult, ScoreInfo scoreInfo)
+        protected DifficultyCalculator CreateDifficultyCalculator(IWorkingBeatmap beatmap)
         {
-            var tDiff = new TDiffAttr {StarRating = diffResult.StarRating, MaxCombo = diffResult.MaxCombo};
-            Map(tDiff, diffResult);
-
-            var gameScoreInfo = BuildGameScoreInfo(scoreInfo);
-
-            PerformanceCalculator ppCalc;
-            lock (Ruleset)
+            lock (_ruleset)
             {
-                ppCalc = Ruleset.CreatePerformanceCalculator(tDiff, gameScoreInfo);
+                return _ruleset.CreateDifficultyCalculator(beatmap);
             }
-
-            var categoryDifficulty = new Dictionary<string, double>();
-            var pp = ppCalc.Calculate(categoryDifficulty);
-            return (pp, categoryDifficulty);
         }
 
-        private osu.Game.Scoring.ScoreInfo BuildGameScoreInfo(ScoreInfo scoreInfo)
+        protected PerformanceCalculator CreatePerformanceCalculator(DifficultyAttributes attributes, ScoreInfoWithNewStyleModArray scoreInfo)
         {
-            Mod[] mods;
-            RulesetInfo rulesetInfo;
-            lock (Ruleset)
+            lock (_ruleset)
             {
-                mods = Ruleset.ConvertFromLegacyMods(scoreInfo.Mods).ToArray();
-                rulesetInfo = Ruleset.RulesetInfo;
+                var score = BuildGameScoreInfo(_ruleset.RulesetInfo, scoreInfo.Mods, scoreInfo.ScoreInfo);
+                return _ruleset.CreatePerformanceCalculator(attributes, score);
             }
+        }
 
+        private osu.Game.Scoring.ScoreInfo BuildGameScoreInfo(RulesetInfo rulesetInfo, Mod[] mods, ScoreInfo scoreInfo)
+        {
             var gameScoreInfo = new osu.Game.Scoring.ScoreInfo
             {
-                RulesetID = (int) LegacyGameMode,
+                RulesetID = (int)LegacyGameMode,
                 Ruleset = rulesetInfo,
                 Mods = mods,
                 MaxCombo = scoreInfo.MaxCombo,
@@ -165,6 +119,57 @@ namespace SanDoku.Util
             gameScoreInfo.SetCountGeki(scoreInfo.CountGeki);
             LegacyScoreDecoder.PopulateAccuracy(gameScoreInfo);
             return gameScoreInfo;
+        }
+
+        public abstract (DiffCalcResult diffCalcResult, LegacyGameMode beatmapGameMode, LegacyGameMode gameModeUsed, LegacyMods modsUsed)
+            CalculateDifficultyAttributes(IWorkingBeatmap beatmap, IEnumerable<Mod> mods, CancellationToken ct);
+
+        public abstract (double pp, Dictionary<string, double> categoryDifficulty) CalculatePerformance(DiffCalcResult diffResult, ScoreInfoWithNewStyleModArray scoreInfo);
+    }
+
+    public abstract class RulesetUtil<TRuleset> : RulesetUtil where TRuleset : Ruleset, ILegacyRuleset, new()
+    {
+        protected RulesetUtil(TRuleset ruleset) : base((LegacyGameMode)ruleset.LegacyID, ruleset)
+        {
+        }
+    }
+
+    public abstract class RulesetUtil<TRuleset, TDiffAttr> : RulesetUtil<TRuleset> where TRuleset : Ruleset, ILegacyRuleset, new()
+        where TDiffAttr : DifficultyAttributes, new()
+    {
+        protected RulesetUtil() : base(new TRuleset())
+        {
+        }
+
+        public override (DiffCalcResult diffCalcResult, LegacyGameMode beatmapGameMode, LegacyGameMode gameModeUsed, LegacyMods modsUsed)
+            CalculateDifficultyAttributes(IWorkingBeatmap beatmap, IEnumerable<Mod> mods, CancellationToken ct)
+        {
+            var calculator = CreateDifficultyCalculator(beatmap);
+            var diffAttr = calculator.Calculate(mods, ct);
+            if (diffAttr is not TDiffAttr tDiff)
+            {
+                throw new InvalidOperationException(
+                    $"unexpected DifficultyAttributes type {diffAttr.GetType().FullName}, expected {typeof(TDiffAttr).FullName}");
+            }
+
+            var legacyModsUsed = ConvertToLegacyMods(tDiff.Mods);
+            var diff = new DiffCalcResult
+            {
+                StarRating = tDiff.StarRating,
+                MaxCombo = tDiff.MaxCombo
+            };
+            Map(diff, tDiff);
+            return (diff, (LegacyGameMode)beatmap.Beatmap.BeatmapInfo.RulesetID, LegacyGameMode, legacyModsUsed);
+        }
+
+        public override (double pp, Dictionary<string, double> categoryDifficulty) CalculatePerformance(DiffCalcResult diffResult, ScoreInfoWithNewStyleModArray scoreInfo)
+        {
+            var tDiff = new TDiffAttr { StarRating = diffResult.StarRating, MaxCombo = diffResult.MaxCombo };
+            Map(tDiff, diffResult);
+            var ppCalc = CreatePerformanceCalculator(tDiff, scoreInfo);
+            var categoryDifficulty = new Dictionary<string, double>();
+            var pp = ppCalc.Calculate(categoryDifficulty);
+            return (pp, categoryDifficulty);
         }
 
         protected abstract void Map(DiffCalcResult diffCalcResult, TDiffAttr tDiff);

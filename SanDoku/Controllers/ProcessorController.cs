@@ -117,9 +117,10 @@ namespace SanDoku.Controllers
 
             var rulesetUtil = RulesetUtil.GetForLegacyGameMode(ppInput.GameMode);
 
+            var scoreInfoWithModArray = rulesetUtil.MapToScoreInfoObjectWithNewStyleMods(ppInput.ScoreInfo);
+
             // check if mods are illegal
-            var mods = rulesetUtil.ConvertFromLegacyMods(ppInput.ScoreInfo.Mods);
-            if (!ModUtils.CheckCompatibleSet(mods, out var invalid))
+            if (!ModUtils.CheckCompatibleSet(scoreInfoWithModArray.Mods, out var invalid))
             {
                 var invalidModsStr = string.Join(',', invalid.Select(mod => mod.Acronym));
                 _logger.LogDebug("[pp-calc] invalid mod combination requested: {invalidModsStr}", invalidModsStr);
@@ -128,7 +129,7 @@ namespace SanDoku.Controllers
             }
 
             _logger.LogDebug("[pp-calc] start calculating...");
-            var (pp, categoryDifficulty) = rulesetUtil.CalculatePerformance(ppInput.DiffCalcResult, ppInput.ScoreInfo);
+            var (pp, categoryDifficulty) = rulesetUtil.CalculatePerformance(ppInput.DiffCalcResult, scoreInfoWithModArray);
             _logger.LogDebug("[pp-calc] calculating done!");
 
             var output = new PpOutput
