@@ -1,10 +1,7 @@
-﻿using System.Collections.Generic;
+﻿namespace SanDoku.Models;
 
-namespace SanDoku.Models
-{
-    public class PpOutput
-    {
-        public double? Pp { get; set; }
-        public Dictionary<string, double?> ExtraValues { get; set; }
-    }
-}
+public record PpOutput
+(
+    double? Pp,
+    Dictionary<string, double?> ExtraValues
+);

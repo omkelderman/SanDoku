@@ -6,51 +6,47 @@ using osu.Game.Rulesets;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Skinning;
 using osu.Game.Utils;
-using System;
-using System.IO;
-using System.Linq;
 
-namespace SanDoku.Util
+namespace SanDoku.Util;
+
+public static class LegacyModsUtil
 {
-    public static class LegacyModsUtil
+    private static readonly LegacyMods AllDefined = Enum.GetValues<LegacyMods>().Aggregate((current, m) => current | m);
+
+    private class EmptyWorkingBeatmap : WorkingBeatmap
     {
-        private static readonly LegacyMods AllDefined = Enum.GetValues<LegacyMods>().Aggregate((current, m) => current | m);
-
-        private class EmptyWorkingBeatmap : WorkingBeatmap
+        public EmptyWorkingBeatmap(BeatmapInfo beatmapInfo) : base(beatmapInfo, null)
         {
-            public EmptyWorkingBeatmap(BeatmapInfo beatmapInfo) : base(beatmapInfo, null)
-            {
-            }
-
-            protected override IBeatmap GetBeatmap() => throw new NotImplementedException();
-
-            protected override Texture GetBackground() => throw new NotImplementedException();
-
-            protected override Track GetBeatmapTrack() => throw new NotImplementedException();
-
-            protected override ISkin GetSkin() => throw new NotImplementedException();
-
-            public override Stream GetStream(string storagePath) => throw new NotImplementedException();
         }
 
-        public static LegacyMods GetDifficultyAffectingLegacyModsForRuleset(Ruleset ruleset)
-        {
-            var emptyDummyBeatmap = new EmptyWorkingBeatmap(new BeatmapInfo
-            {
-                Ruleset = ruleset.RulesetInfo,
-                BaseDifficulty = new BeatmapDifficulty()
-            });
-            var difficultyAdjustmentModCombinations = ruleset.CreateDifficultyCalculator(emptyDummyBeatmap).CreateDifficultyAdjustmentModCombinations();
-            var mods = ModUtils.FlattenMods(difficultyAdjustmentModCombinations)
-                .Where(mod => mod is not ModNoMod)
-                .Distinct()
-                .ToArray();
-            return ruleset.ConvertToLegacyMods(mods);
-        }
+        protected override IBeatmap GetBeatmap() => throw new InvalidOperationException();
 
-        public static bool IsDefined(LegacyMods mods)
+        protected override Texture GetBackground() => throw new InvalidOperationException();
+
+        protected override Track GetBeatmapTrack() => throw new InvalidOperationException();
+
+        protected override ISkin GetSkin() => throw new InvalidOperationException();
+
+        public override Stream GetStream(string storagePath) => throw new InvalidOperationException();
+    }
+
+    public static LegacyMods GetDifficultyAffectingLegacyModsForRuleset(Ruleset ruleset)
+    {
+        var emptyDummyBeatmap = new EmptyWorkingBeatmap(new BeatmapInfo
         {
-            return (mods & AllDefined) == mods;
-        }
+            Ruleset = ruleset.RulesetInfo,
+            BaseDifficulty = new BeatmapDifficulty()
+        });
+        var difficultyAdjustmentModCombinations = ruleset.CreateDifficultyCalculator(emptyDummyBeatmap).CreateDifficultyAdjustmentModCombinations();
+        var mods = ModUtils.FlattenMods(difficultyAdjustmentModCombinations)
+            .Where(mod => mod is not ModNoMod)
+            .Distinct()
+            .ToArray();
+        return ruleset.ConvertToLegacyMods(mods);
+    }
+
+    public static bool IsDefined(LegacyMods mods)
+    {
+        return (mods & AllDefined) == mods;
     }
 }

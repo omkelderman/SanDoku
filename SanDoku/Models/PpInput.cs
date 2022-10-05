@@ -1,16 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
-using SanDoku.Util;
+﻿using SanDoku.Util;
+using System.ComponentModel.DataAnnotations;
 
-namespace SanDoku.Models
-{
-    public class PpInput
-    {
-        public LegacyGameMode GameMode { get; set; }
+namespace SanDoku.Models;
 
-        [Required]
-        public DiffCalcResult DiffCalcResult { get; set; }
-
-        [Required]
-        public ScoreInfo ScoreInfo { get; set; }
-    }
-}
+public record PpInput
+(
+    LegacyGameMode GameMode,
+    [Required] DiffCalcResult DiffCalcResult,
+    [Required] ScoreInfo ScoreInfo
+);

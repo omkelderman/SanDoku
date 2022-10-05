@@ -1,16 +1,13 @@
 ﻿using osu.Game.Beatmaps.Legacy;
 using SanDoku.Util;
 
-namespace SanDoku.Models
-{
-    public class DiffResult
-    {
-        public LegacyGameMode BeatmapGameMode { get; set; }
-        public string BeatmapMd5 { get; set; }
+namespace SanDoku.Models;
 
-        public LegacyGameMode GameModeUsed { get; set; }
-
-        public LegacyMods ModsUsed { get; set; }
-        public DiffCalcResult DiffCalcResult { get; set; }
-    }
-}
+public record DiffResult
+(
+    LegacyGameMode BeatmapGameMode,
+    string BeatmapMd5,
+    LegacyGameMode GameModeUsed,
+    LegacyMods ModsUsed,
+    DiffCalcResult DiffCalcResult
+);

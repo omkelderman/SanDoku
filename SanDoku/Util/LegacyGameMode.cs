@@ -1,10 +1,9 @@
-﻿namespace SanDoku.Util
+﻿namespace SanDoku.Util;
+
+public enum LegacyGameMode
 {
-    public enum LegacyGameMode
-    {
-        Osu = 0,
-        Taiko = 1,
-        Catch = 2,
-        Mania = 3
-    }
+    Osu = 0,
+    Taiko = 1,
+    Catch = 2,
+    Mania = 3
 }
