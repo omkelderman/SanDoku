@@ -60,9 +60,9 @@ public class ProcessorController : ControllerBase
 
         _logger.LogInformation("[diff-calc] [{md5}] {beatmapActual}", beatmap.Md5Checksum, beatmapActual.ToString());
 
-        var modeToPick = mode ?? (LegacyGameMode) beatmapActual.BeatmapInfo.RulesetID;
+        var modeToPick = mode ?? (LegacyGameMode) beatmapActual.BeatmapInfo.Ruleset.OnlineID;
         var rulesetUtil = RulesetUtil.GetForLegacyGameMode(modeToPick);
-        var filtered = rulesetUtil.ConvertFromLegacyModsFilteredByDifficultyAffecting(mods).ToList();
+        var filtered = rulesetUtil.ConvertFromLegacyModsFilteredByDifficultyAffectingAndAddClassicMod(mods);
 
         if (!ModUtils.CheckCompatibleSet(filtered, out var invalid))
         {
@@ -105,7 +105,7 @@ public class ProcessorController : ControllerBase
 
         var rulesetUtil = RulesetUtil.GetForLegacyGameMode(ppInput.GameMode);
 
-        var scoreInfoWithModArray = rulesetUtil.MapToScoreInfoObjectWithNewStyleMods(ppInput.ScoreInfo);
+        var scoreInfoWithModArray = rulesetUtil.MapToScoreInfoObjectWithNewStyleModsWithClassicMod(ppInput.ScoreInfo);
 
         // check if mods are illegal
         if (!ModUtils.CheckCompatibleSet(scoreInfoWithModArray.Mods, out var invalid))
@@ -117,11 +117,9 @@ public class ProcessorController : ControllerBase
         }
 
         _logger.LogDebug("[pp-calc] start calculating...");
-        var (pp, categoryDifficulty) = rulesetUtil.CalculatePerformance(ppInput.DiffCalcResult, scoreInfoWithModArray);
+        var ppOutput = rulesetUtil.CalculatePerformance(ppInput.DiffCalcResult, scoreInfoWithModArray);
         _logger.LogDebug("[pp-calc] calculating done!");
 
-        var ppOrNullIfWeird = pp.NaNOrInfinityToNull();
-        var extraValues = categoryDifficulty.ToDictionary(x => x.Key, x => x.Value.NaNOrInfinityToNull());
-        return new PpOutput(ppOrNullIfWeird, extraValues);
+        return ppOutput;
     }
 }

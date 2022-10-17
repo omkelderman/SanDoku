@@ -3,5 +3,5 @@
 public record PpOutput
 (
     double? Pp,
-    Dictionary<string, double?> ExtraValues
+    List<PpDisplayAttribute> Attributes
 );
