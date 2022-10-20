@@ -1,5 +1,4 @@
-﻿using NuGet.Packaging.Rules;
-using osu.Game.Beatmaps;
+﻿using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Catch;
@@ -48,14 +47,13 @@ public abstract class RulesetUtil
     }
     protected readonly LegacyGameMode LegacyGameMode;
     private readonly Ruleset _ruleset;
-    private readonly LegacyMods _difficultyAffectingLegacyMods;
     private readonly Mod? _classicMod;
 
     protected RulesetUtil(LegacyGameMode legacyGameMode, Ruleset ruleset)
     {
         LegacyGameMode = legacyGameMode;
         _ruleset = ruleset;
-        (_difficultyAffectingLegacyMods, _classicMod) = LegacyModsUtil.GetDifficultyAffectingLegacyModsAndClassicModForRuleset(_ruleset);
+        _classicMod = LegacyModsUtil.GetClassicMod(ruleset);
     }
 
     public void AddRulesetInfoToBeatmapInfo(BeatmapInfo beatmapInfo)
@@ -65,13 +63,7 @@ public abstract class RulesetUtil
         beatmapInfo.Ruleset = beatmapRulesetUtil._ruleset.RulesetInfo;
     }
 
-    public Mod[] ConvertFromLegacyModsFilteredByDifficultyAffectingAndAddClassicMod(LegacyMods legacyMods)
-    {
-        var filteredLegacyMods = legacyMods & _difficultyAffectingLegacyMods;
-        return ConvertFromLegacyModsAndAddClassicMod(filteredLegacyMods);
-    }
-
-    private Mod[] ConvertFromLegacyModsAndAddClassicMod(LegacyMods legacyMods)
+    public Mod[] ConvertFromLegacyModsAndAddClassicMod(LegacyMods legacyMods)
     {
         lock (_ruleset)
         {

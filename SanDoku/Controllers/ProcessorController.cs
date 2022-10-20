@@ -62,7 +62,7 @@ public class ProcessorController : ControllerBase
 
         var modeToPick = mode ?? (LegacyGameMode) beatmapActual.BeatmapInfo.Ruleset.OnlineID;
         var rulesetUtil = RulesetUtil.GetForLegacyGameMode(modeToPick);
-        var filtered = rulesetUtil.ConvertFromLegacyModsFilteredByDifficultyAffectingAndAddClassicMod(mods);
+        var filtered = rulesetUtil.ConvertFromLegacyModsAndAddClassicMod(mods);
 
         if (!ModUtils.CheckCompatibleSet(filtered, out var invalid))
         {
