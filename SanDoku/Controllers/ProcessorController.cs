@@ -75,10 +75,19 @@ public class ProcessorController : ControllerBase
         var workingBeatmap = new ProcessorWorkingBeatmap(beatmapActual);
 
         _logger.LogDebug("[diff-calc] [{md5}] start processing...", beatmap.Md5Checksum);
-        var (diffCalcResult, beatmapGameMode, gameModeUsed, modsUsed) = rulesetUtil.CalculateDifficultyAttributes(workingBeatmap, modArray, ct);
-        _logger.LogDebug("[diff-calc] [{md5}] processing done!", beatmap.Md5Checksum);
+        try
+        {
+            var (diffCalcResult, beatmapGameMode, gameModeUsed, modsUsed) = rulesetUtil.CalculateDifficultyAttributes(workingBeatmap, modArray, ct);
+            _logger.LogDebug("[diff-calc] [{md5}] processing done!", beatmap.Md5Checksum);
 
-        return new DiffResult(beatmapGameMode, beatmap.Md5Checksum, gameModeUsed, modsUsed, diffCalcResult);
+            return new DiffResult(beatmapGameMode, beatmap.Md5Checksum, gameModeUsed, modsUsed, diffCalcResult);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "[diff-calc] [{md5}] processing error", beatmap.Md5Checksum);
+            ModelState.AddModelError(string.Empty, $"processing error: {ex.GetType()}: {ex.Message}");
+            return ValidationProblem();
+        }
     }
 
     /// <summary>
@@ -115,9 +124,18 @@ public class ProcessorController : ControllerBase
         }
 
         _logger.LogDebug("[pp-calc] start calculating...");
-        var ppOutput = rulesetUtil.CalculatePerformance(ppInput.DiffCalcResult, scoreInfoWithModArray);
-        _logger.LogDebug("[pp-calc] calculating done!");
+        try
+        {
+            var ppOutput = rulesetUtil.CalculatePerformance(ppInput.DiffCalcResult, scoreInfoWithModArray);
+            _logger.LogDebug("[pp-calc] calculating done!");
 
-        return ppOutput;
+            return ppOutput;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "[pp-calc] calculating error");
+            ModelState.AddModelError(string.Empty, $"calculating error: {ex.GetType()}: {ex.Message}");
+            return ValidationProblem();
+        }
     }
 }
