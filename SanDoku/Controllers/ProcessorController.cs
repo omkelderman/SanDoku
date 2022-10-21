@@ -72,8 +72,6 @@ public class ProcessorController : ControllerBase
             return ValidationProblem();
         }
 
-        rulesetUtil.AddRulesetInfoToBeatmapInfo(beatmapActual.BeatmapInfo);
-
         var workingBeatmap = new ProcessorWorkingBeatmap(beatmapActual);
 
         _logger.LogDebug("[diff-calc] [{md5}] start processing...", beatmap.Md5Checksum);

@@ -56,13 +56,6 @@ public abstract class RulesetUtil
         _classicMod = LegacyModsUtil.GetClassicMod(ruleset);
     }
 
-    public void AddRulesetInfoToBeatmapInfo(BeatmapInfo beatmapInfo)
-    {
-        var beatmapGameMode = (LegacyGameMode)beatmapInfo.Ruleset.OnlineID;
-        var beatmapRulesetUtil = GetForLegacyGameMode(beatmapGameMode);
-        beatmapInfo.Ruleset = beatmapRulesetUtil._ruleset.RulesetInfo;
-    }
-
     public Mod[] ConvertFromLegacyModsAndAddClassicMod(LegacyMods legacyMods)
     {
         lock (_ruleset)
