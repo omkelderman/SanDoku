@@ -62,9 +62,9 @@ public class ProcessorController : ControllerBase
 
         var modeToPick = mode ?? (LegacyGameMode) beatmapActual.BeatmapInfo.Ruleset.OnlineID;
         var rulesetUtil = RulesetUtil.GetForLegacyGameMode(modeToPick);
-        var filtered = rulesetUtil.ConvertFromLegacyModsAndAddClassicMod(mods);
+        var modArray = rulesetUtil.ConvertFromLegacyModsAndAddClassicMod(mods);
 
-        if (!ModUtils.CheckCompatibleSet(filtered, out var invalid))
+        if (!ModUtils.CheckCompatibleSet(modArray, out var invalid))
         {
             var invalidModsStr = string.Join(',', invalid.Select(mod => mod.Acronym));
             _logger.LogDebug("Invalid mod combination requested {invalidModsStr} for map {md5}", invalidModsStr, beatmap.Md5Checksum);
@@ -77,7 +77,7 @@ public class ProcessorController : ControllerBase
         var workingBeatmap = new ProcessorWorkingBeatmap(beatmapActual);
 
         _logger.LogDebug("[diff-calc] [{md5}] start processing...", beatmap.Md5Checksum);
-        var (diffCalcResult, beatmapGameMode, gameModeUsed, modsUsed) = rulesetUtil.CalculateDifficultyAttributes(workingBeatmap, filtered, ct);
+        var (diffCalcResult, beatmapGameMode, gameModeUsed, modsUsed) = rulesetUtil.CalculateDifficultyAttributes(workingBeatmap, modArray, ct);
         _logger.LogDebug("[diff-calc] [{md5}] processing done!", beatmap.Md5Checksum);
 
         return new DiffResult(beatmapGameMode, beatmap.Md5Checksum, gameModeUsed, modsUsed, diffCalcResult);
