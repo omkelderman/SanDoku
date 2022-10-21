@@ -4,7 +4,7 @@ WORKDIR /app
 COPY SanDoku.* ./
 COPY SanDoku SanDoku
 RUN dotnet tool restore
-RUN dotnet publish -c Release -r linux-x64 -p:PublishReadyToRun=true SanDoku.sln
+RUN dotnet publish -c Release -r linux-x64 SanDoku.sln
 
 FROM mcr.microsoft.com/dotnet/runtime:6.0
 WORKDIR /app
