@@ -2,6 +2,7 @@
 using NJsonSchema.Annotations;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;
+using osu.Game.Rulesets.UI;
 using osu.Game.Utils;
 using SanDoku.Extensions;
 using SanDoku.Models;
@@ -32,7 +33,7 @@ public class ProcessorController : ControllerBase
     [HttpPost("diff")]
     [Consumes(OsuInputFormatter.ContentType)]
     [ProducesResponseType(typeof(DiffResult), (int)HttpStatusCode.OK)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), (int) HttpStatusCode.BadRequest)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), (int)HttpStatusCode.BadRequest)]
     public ActionResult<DiffResult> CalcDiff([FromBody, JsonSchemaType(typeof(byte[]))] BeatmapInput beatmap, [FromQuery] LegacyGameMode? mode = null,
         [FromQuery] LegacyMods mods = LegacyMods.None, CancellationToken ct = default)
     {
@@ -60,8 +61,8 @@ public class ProcessorController : ControllerBase
 
         _logger.LogInformation("[diff-calc] [{md5}] {beatmapActual}", beatmap.Md5Checksum, beatmapActual.ToString());
 
-        var modeToPick = mode ?? (LegacyGameMode) beatmapActual.BeatmapInfo.Ruleset.OnlineID;
-        var rulesetUtil = RulesetUtil.GetForLegacyGameMode(modeToPick);
+        var beatmapGameMode = (LegacyGameMode)beatmapActual.BeatmapInfo.Ruleset.OnlineID;
+        var rulesetUtil = RulesetUtil.GetForLegacyGameMode(mode ?? beatmapGameMode);
         var modArray = rulesetUtil.ConvertFromLegacyModsAndAddClassicMod(mods);
 
         if (!ModUtils.CheckCompatibleSet(modArray, out var invalid))
@@ -77,10 +78,17 @@ public class ProcessorController : ControllerBase
         _logger.LogDebug("[diff-calc] [{md5}] start processing...", beatmap.Md5Checksum);
         try
         {
-            var (diffCalcResult, beatmapGameMode, gameModeUsed, modsUsed) = rulesetUtil.CalculateDifficultyAttributes(workingBeatmap, modArray, ct);
+            var (diffCalcResult, modsUsed) = rulesetUtil.CalculateDifficultyAttributes(workingBeatmap, modArray, ct);
             _logger.LogDebug("[diff-calc] [{md5}] processing done!", beatmap.Md5Checksum);
 
-            return new DiffResult(beatmapGameMode, beatmap.Md5Checksum, gameModeUsed, modsUsed, diffCalcResult);
+            return new DiffResult(beatmapGameMode, beatmap.Md5Checksum, rulesetUtil.LegacyGameMode, modsUsed, diffCalcResult);
+        }
+        catch (BeatmapInvalidForRulesetException)
+        {
+            _logger.LogDebug("[diff-calc] [{md5}] invalid game mode conversion", beatmap.Md5Checksum);
+            ModelState.AddModelError(nameof(beatmap),
+                $"Cannot convert beatmap game mode ({(int)beatmapGameMode}) to requested game mode ({(int)rulesetUtil.LegacyGameMode})");
+            return ValidationProblem();
         }
         catch (Exception ex)
         {

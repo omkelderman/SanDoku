@@ -45,7 +45,7 @@ public abstract class RulesetUtil
                 x._ruleset.RulesetInfo.InstantiationInfo, x._ruleset.RulesetInfo.OnlineID)).ToArray();
         }
     }
-    protected readonly LegacyGameMode LegacyGameMode;
+    public readonly LegacyGameMode LegacyGameMode;
     private readonly Ruleset _ruleset;
     private readonly Mod? _classicMod;
 
@@ -124,8 +124,8 @@ public abstract class RulesetUtil
         }
     }
 
-    public abstract (DiffCalcResult diffCalcResult, LegacyGameMode beatmapGameMode, LegacyGameMode gameModeUsed, LegacyMods modsUsed)
-        CalculateDifficultyAttributes(IWorkingBeatmap beatmap, IEnumerable<Mod> mods, CancellationToken ct);
+    public abstract (DiffCalcResult diffCalcResult, LegacyMods modsUsed) CalculateDifficultyAttributes(IWorkingBeatmap beatmap, IEnumerable<Mod> mods,
+        CancellationToken ct);
 
     public abstract PpOutput CalculatePerformance(DiffCalcResult diffResult, ScoreInfoWithNewStyleModArray scoreInfo);
 }
@@ -144,8 +144,8 @@ public abstract class RulesetUtil<TRuleset, TDiffAttr> : RulesetUtil<TRuleset> w
     {
     }
 
-    public override (DiffCalcResult diffCalcResult, LegacyGameMode beatmapGameMode, LegacyGameMode gameModeUsed, LegacyMods modsUsed)
-        CalculateDifficultyAttributes(IWorkingBeatmap beatmap, IEnumerable<Mod> mods, CancellationToken ct)
+    public override (DiffCalcResult diffCalcResult, LegacyMods modsUsed) CalculateDifficultyAttributes(IWorkingBeatmap beatmap, IEnumerable<Mod> mods,
+        CancellationToken ct)
     {
         var calculator = CreateDifficultyCalculator(beatmap);
         var diffAttr = calculator.Calculate(mods, ct);
@@ -162,7 +162,7 @@ public abstract class RulesetUtil<TRuleset, TDiffAttr> : RulesetUtil<TRuleset> w
             MaxCombo = tDiff.MaxCombo
         };
         Map(diff, tDiff);
-        return (diff, (LegacyGameMode)beatmap.Beatmap.BeatmapInfo.Ruleset.OnlineID, LegacyGameMode, legacyModsUsed);
+        return (diff, legacyModsUsed);
     }
 
     public override PpOutput CalculatePerformance(DiffCalcResult diffResult, ScoreInfoWithNewStyleModArray scoreInfo)
