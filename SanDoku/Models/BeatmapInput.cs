@@ -6,7 +6,7 @@ namespace SanDoku.Models;
 
 public class BeatmapInput
 {
-    public static readonly BeatmapInput Empty = new(new MemoryStream(Array.Empty<byte>()), "93b885adfe0da089cdf634904fd59f71");
+    public static readonly BeatmapInput Empty = new(new MemoryStream(Array.Empty<byte>()), "d41d8cd98f00b204e9800998ecf8427e");
 
     private readonly MemoryStream _memoryStream;
 
