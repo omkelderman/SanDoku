@@ -38,7 +38,7 @@ public class OsuInputFormatter : TextInputFormatter
 
         try
         {
-            var beatmapInput = request.ContentLength is null or 0 ? BeatmapInput.Empty : await BeatmapInput.BuildFromStream(request.Body);
+            var beatmapInput = request.ContentLength is null or 0 ? BeatmapInput.Empty : await BeatmapInput.BuildFromStream(request.Body, httpContext.RequestAborted);
             return await InputFormatterResult.SuccessAsync(beatmapInput);
         }
         catch (Exception ex)

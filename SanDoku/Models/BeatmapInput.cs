@@ -28,7 +28,7 @@ public class BeatmapInput
         return beatmap;
     }
 
-    public static async Task<BeatmapInput> BuildFromStream(Stream stream, CancellationToken ct = default)
+    public static async Task<BeatmapInput> BuildFromStream(Stream stream, CancellationToken ct)
     {
         var memStream = new MemoryStream();
         await stream.CopyToAsync(memStream, ct);
