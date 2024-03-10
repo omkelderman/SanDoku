@@ -10,6 +10,7 @@ LegacyDifficultyCalculatorBeatmapDecoder.Register();
 // explicitly set the RulesetStore so we don't get a warning later on about it
 Decoder.RegisterDependencies(new CustomRulesetStore(RulesetUtil.GetAllAvailableRulesetInfos()));
 
+// setup web app
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -22,7 +23,7 @@ builder.Services.AddControllers(o =>
 });
 builder.Services.AddSwaggerDocument(options =>
 {
-    options.TypeMappers.Add(new PrimitiveTypeMapper(typeof(Beatmap), s =>
+    options.SchemaSettings.TypeMappers.Add(new PrimitiveTypeMapper(typeof(Beatmap), s =>
     {
         s.Type = JsonObjectType.String;
         s.Format = "osu-beatmap";
@@ -40,7 +41,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseOpenApi();
-app.UseSwaggerUi3();
+app.UseSwaggerUi();
 
 app.UseRouting();
 

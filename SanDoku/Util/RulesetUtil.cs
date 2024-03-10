@@ -41,10 +41,10 @@ public abstract class RulesetUtil
     {
         lock (RulesetUtils)
         {
-            return RulesetUtils.Values.Select(x => new RulesetInfo(x._ruleset.RulesetInfo.ShortName, x._ruleset.RulesetInfo.Name,
-                x._ruleset.RulesetInfo.InstantiationInfo, x._ruleset.RulesetInfo.OnlineID)).ToArray();
+            return RulesetUtils.Values.Select(x => x._ruleset.RulesetInfo.Clone()).ToArray();
         }
     }
+
     public readonly LegacyGameMode LegacyGameMode;
     private readonly Ruleset _ruleset;
     private readonly Mod? _classicMod;
@@ -96,8 +96,7 @@ public abstract class RulesetUtil
         lock (_ruleset)
         {
             var ppCalc = _ruleset.CreatePerformanceCalculator();
-            if (ppCalc == null) throw new InvalidOperationException("Unable to create pp calculator, should never happen");
-            return ppCalc;
+            return ppCalc ?? throw new InvalidOperationException("Unable to create pp calculator, should never happen");
         }
     }
 

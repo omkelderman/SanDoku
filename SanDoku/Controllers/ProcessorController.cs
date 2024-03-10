@@ -35,7 +35,7 @@ public class ProcessorController : ControllerBase
     [ProducesResponseType(typeof(DiffResult), (int)HttpStatusCode.OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), (int)HttpStatusCode.BadRequest)]
     public ActionResult<DiffResult> CalcDiff([FromBody, JsonSchemaType(typeof(byte[]))] BeatmapInput beatmap, [FromQuery] LegacyGameMode? mode = null,
-        [FromQuery] LegacyMods mods = LegacyMods.None, CancellationToken ct = default)
+        [FromQuery, JsonSchemaType(typeof(int))] LegacyMods mods = LegacyMods.None, CancellationToken ct = default)
     {
         if (beatmap.ContentLength == 0)
         {
