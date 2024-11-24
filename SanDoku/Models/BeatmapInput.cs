@@ -1,12 +1,12 @@
-﻿using osu.Game.Beatmaps;
+﻿using System.Security.Cryptography;
+using osu.Game.Beatmaps;
 using osu.Game.IO;
-using System.Security.Cryptography;
 
 namespace SanDoku.Models;
 
 public class BeatmapInput
 {
-    public static readonly BeatmapInput Empty = new(new MemoryStream(Array.Empty<byte>()), "d41d8cd98f00b204e9800998ecf8427e");
+    public static readonly BeatmapInput Empty = new(new MemoryStream([]), "d41d8cd98f00b204e9800998ecf8427e");
 
     private readonly MemoryStream _memoryStream;
 
@@ -24,8 +24,8 @@ public class BeatmapInput
         _memoryStream.Position = 0;
         using var reader = new LineBufferedReader(_memoryStream);
         var decoder = osu.Game.Beatmaps.Formats.Decoder.GetDecoder<Beatmap>(reader);
-        var beatmap = decoder.Decode(reader);
-        return beatmap;
+        IBeatmap beatmap = decoder.Decode(reader);
+        return beatmap.Clone();
     }
 
     public static async Task<BeatmapInput> BuildFromStream(Stream stream, CancellationToken ct)

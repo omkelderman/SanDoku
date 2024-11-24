@@ -1,5 +1,6 @@
 ﻿using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;
+using osu.Game.Database;
 using osu.Game.Rulesets;
 using osu.Game.Rulesets.Catch;
 using osu.Game.Rulesets.Catch.Difficulty;
@@ -9,7 +10,6 @@ using osu.Game.Rulesets.Mania.Difficulty;
 using osu.Game.Rulesets.Mods;
 using osu.Game.Rulesets.Osu;
 using osu.Game.Rulesets.Osu.Difficulty;
-using osu.Game.Rulesets.Scoring;
 using osu.Game.Rulesets.Taiko;
 using osu.Game.Rulesets.Taiko.Difficulty;
 using osu.Game.Scoring.Legacy;
@@ -41,7 +41,7 @@ public abstract class RulesetUtil
     {
         lock (RulesetUtils)
         {
-            return RulesetUtils.Values.Select(x => x._ruleset.RulesetInfo.Clone()).ToArray();
+            return RulesetUtils.Values.Select(x => x.GetRulesetInfo()).ToArray();
         }
     }
 
@@ -54,6 +54,14 @@ public abstract class RulesetUtil
         LegacyGameMode = legacyGameMode;
         _ruleset = ruleset;
         _classicMod = LegacyModsUtil.GetClassicMod(ruleset);
+    }
+
+    private RulesetInfo GetRulesetInfo()
+    {
+        lock (_ruleset)
+        {
+            return _ruleset.RulesetInfo.Clone();
+        }
     }
 
     public Mod[] ConvertFromLegacyModsAndAddClassicMod(LegacyMods legacyMods)
@@ -77,12 +85,6 @@ public abstract class RulesetUtil
         }
     }
 
-    public ScoreInfoWithNewStyleModArray MapToScoreInfoObjectWithNewStyleModsWithClassicMod(ScoreInfo scoreInfo)
-    {
-        var mods = ConvertFromLegacyModsAndAddClassicMod(scoreInfo.Mods);
-        return new ScoreInfoWithNewStyleModArray(mods, scoreInfo);
-    }
-
     protected DifficultyCalculator CreateDifficultyCalculator(IWorkingBeatmap beatmap)
     {
         lock (_ruleset)
@@ -100,33 +102,41 @@ public abstract class RulesetUtil
         }
     }
 
-    protected osu.Game.Scoring.ScoreInfo BuildGameScoreInfo(Mod[] mods, ScoreInfo scoreInfo)
+    protected osu.Game.Scoring.ScoreInfo BuildGameScoreInfo(Mod[] mods, ScoreInfo scoreInfo, WorkingBeatmap workingBeatmap)
     {
-        lock (_ruleset)
+        var rulesetInfo = GetRulesetInfo();
+            
+        var gameScoreInfo = new osu.Game.Scoring.ScoreInfo
         {
-            var gameScoreInfo = new osu.Game.Scoring.ScoreInfo
-            {
-                Ruleset = _ruleset.RulesetInfo,
-                Mods = mods,
-                MaxCombo = scoreInfo.MaxCombo,
-                TotalScore = scoreInfo.TotalScore,
-                Statistics = new Dictionary<HitResult, int>()
-            };
-            gameScoreInfo.SetCount50(scoreInfo.Count50);
-            gameScoreInfo.SetCount100(scoreInfo.Count100);
-            gameScoreInfo.SetCount300(scoreInfo.Count300);
-            gameScoreInfo.SetCountMiss(scoreInfo.CountMiss);
-            gameScoreInfo.SetCountKatu(scoreInfo.CountKatu);
-            gameScoreInfo.SetCountGeki(scoreInfo.CountGeki);
-            LegacyScoreDecoder.PopulateAccuracy(gameScoreInfo);
-            return gameScoreInfo;
-        }
+            Ruleset = rulesetInfo,
+            Mods = mods,
+            MaxCombo = scoreInfo.MaxCombo,
+            TotalScore = scoreInfo.TotalScore,
+
+            // we treat the score info coming in as if it was an old stable score
+            // which is (afaik) correct for score info objects coming from api v1
+            // we need to set this version to trigger reprocessing to new standardised scoring
+            TotalScoreVersion = LegacyScoreEncoder.FIRST_LAZER_VERSION + 1,
+            IsLegacyScore = true,
+            LegacyTotalScore = scoreInfo.TotalScore,
+        };
+        gameScoreInfo.SetCount50(scoreInfo.Count50);
+        gameScoreInfo.SetCount100(scoreInfo.Count100);
+        gameScoreInfo.SetCount300(scoreInfo.Count300);
+        gameScoreInfo.SetCountMiss(scoreInfo.CountMiss);
+        gameScoreInfo.SetCountKatu(scoreInfo.CountKatu);
+        gameScoreInfo.SetCountGeki(scoreInfo.CountGeki);
+            
+        LegacyScoreDecoder.PopulateMaximumStatistics(gameScoreInfo, workingBeatmap);
+        StandardisedScoreMigrationTools.UpdateFromLegacy(gameScoreInfo, workingBeatmap);
+            
+        return gameScoreInfo;
     }
 
     public abstract (DiffCalcResult diffCalcResult, LegacyMods modsUsed) CalculateDifficultyAttributes(IWorkingBeatmap beatmap, IEnumerable<Mod> mods,
         CancellationToken ct);
 
-    public abstract PpOutput CalculatePerformance(DiffCalcResult diffResult, ScoreInfoWithNewStyleModArray scoreInfo);
+    public abstract PpOutput CalculatePerformance(WorkingBeatmap workingBeatmap, DiffCalcResult diffResult, Mod[] modsUsed, ScoreInfo scoreInfo);
 }
 
 public abstract class RulesetUtil<TRuleset> : RulesetUtil where TRuleset : Ruleset, ILegacyRuleset, new()
@@ -160,16 +170,21 @@ public abstract class RulesetUtil<TRuleset, TDiffAttr> : RulesetUtil<TRuleset> w
             StarRating = tDiff.StarRating,
             MaxCombo = tDiff.MaxCombo
         };
-        Map(diff, tDiff);
+        MapProperties(diff, tDiff);
         return (diff, legacyModsUsed);
     }
 
-    public override PpOutput CalculatePerformance(DiffCalcResult diffResult, ScoreInfoWithNewStyleModArray scoreInfo)
+    public override PpOutput CalculatePerformance(WorkingBeatmap workingBeatmap, DiffCalcResult diffResult, Mod[] modsUsed, ScoreInfo scoreInfo)
     {
-        var tDiff = new TDiffAttr { StarRating = diffResult.StarRating, MaxCombo = diffResult.MaxCombo, Mods = scoreInfo.Mods};
-        Map(tDiff, diffResult);
+        var tDiff = new TDiffAttr
+        {
+            Mods = modsUsed,
+            StarRating = diffResult.StarRating,
+            MaxCombo = diffResult.MaxCombo
+        };
+        MapProperties(tDiff, diffResult);
+        var osuScoreInfo = BuildGameScoreInfo(modsUsed, scoreInfo, workingBeatmap);
         var ppCalc = CreatePerformanceCalculator();
-        var osuScoreInfo = BuildGameScoreInfo(scoreInfo.Mods, scoreInfo.ScoreInfo);
         var result = ppCalc.Calculate(osuScoreInfo, tDiff);
 
         var pp = result.Total.NaNOrInfinityToNull();
@@ -179,21 +194,23 @@ public abstract class RulesetUtil<TRuleset, TDiffAttr> : RulesetUtil<TRuleset> w
         return new PpOutput(pp, attributes);
     }
 
-    protected abstract void Map(DiffCalcResult diffCalcResult, TDiffAttr tDiff);
-    protected abstract void Map(TDiffAttr tDiff, DiffCalcResult diffCalcResult);
+    protected abstract void MapProperties(DiffCalcResult diffCalcResult, TDiffAttr tDiff);
+    protected abstract void MapProperties(TDiffAttr tDiff, DiffCalcResult diffCalcResult);
 }
 
 public class OsuRulesetUtil : RulesetUtil<OsuRuleset, OsuDifficultyAttributes>
 {
-    protected override void Map(DiffCalcResult diffCalcResult, OsuDifficultyAttributes osuDiff)
+    protected override void MapProperties(DiffCalcResult diffCalcResult, OsuDifficultyAttributes osuDiff)
     {
         diffCalcResult.Aim = osuDiff.AimDifficulty;
         diffCalcResult.Speed = osuDiff.SpeedDifficulty;
-        diffCalcResult.OverallDifficulty = osuDiff.OverallDifficulty;
-        diffCalcResult.ApproachRate = osuDiff.ApproachRate;
+        diffCalcResult.SpeedNoteCount = osuDiff.SpeedNoteCount;
         diffCalcResult.Flashlight = osuDiff.FlashlightDifficulty;
         diffCalcResult.SliderFactor = osuDiff.SliderFactor;
-        diffCalcResult.SpeedNoteCount = osuDiff.SpeedNoteCount;
+        diffCalcResult.AimDifficultStrainCount = osuDiff.AimDifficultStrainCount;
+        diffCalcResult.SpeedDifficultStrainCount = osuDiff.SpeedDifficultStrainCount;
+        diffCalcResult.ApproachRate = osuDiff.ApproachRate;//
+        diffCalcResult.OverallDifficulty = osuDiff.OverallDifficulty;//
 
         diffCalcResult.DrainRate = osuDiff.DrainRate;
         diffCalcResult.HitCircleCount = osuDiff.HitCircleCount;
@@ -201,16 +218,18 @@ public class OsuRulesetUtil : RulesetUtil<OsuRuleset, OsuDifficultyAttributes>
         diffCalcResult.SpinnerCount = osuDiff.SpinnerCount;
     }
 
-    protected override void Map(OsuDifficultyAttributes osuDiff, DiffCalcResult diffCalcResult)
+    protected override void MapProperties(OsuDifficultyAttributes osuDiff, DiffCalcResult diffCalcResult)
     {
         osuDiff.AimDifficulty = diffCalcResult.Aim;
         osuDiff.SpeedDifficulty = diffCalcResult.Speed;
-        osuDiff.OverallDifficulty = diffCalcResult.OverallDifficulty;
-        osuDiff.ApproachRate = diffCalcResult.ApproachRate;
+        osuDiff.SpeedNoteCount = diffCalcResult.SpeedNoteCount;
         osuDiff.FlashlightDifficulty = diffCalcResult.Flashlight;
         osuDiff.SliderFactor = diffCalcResult.SliderFactor;
-        osuDiff.SpeedNoteCount = diffCalcResult.SpeedNoteCount;
-
+        osuDiff.AimDifficultStrainCount = diffCalcResult.AimDifficultStrainCount;
+        osuDiff.SpeedDifficultStrainCount = diffCalcResult.SpeedDifficultStrainCount;
+        osuDiff.ApproachRate = diffCalcResult.ApproachRate;
+        osuDiff.OverallDifficulty = diffCalcResult.OverallDifficulty;
+    
         osuDiff.DrainRate = diffCalcResult.DrainRate;
         osuDiff.HitCircleCount = diffCalcResult.HitCircleCount;
         osuDiff.SliderCount = diffCalcResult.SliderCount;
@@ -220,33 +239,37 @@ public class OsuRulesetUtil : RulesetUtil<OsuRuleset, OsuDifficultyAttributes>
 
 public class TaikoRulesetUtil : RulesetUtil<TaikoRuleset, TaikoDifficultyAttributes>
 {
-    protected override void Map(DiffCalcResult diffCalcResult, TaikoDifficultyAttributes taikoDiff)
+    protected override void MapProperties(DiffCalcResult diffCalcResult, TaikoDifficultyAttributes taikoDiff)
     {
-        diffCalcResult.GreatHitWindow = taikoDiff.GreatHitWindow;
         diffCalcResult.Stamina = taikoDiff.StaminaDifficulty;
+        diffCalcResult.MonoStaminaFactor = taikoDiff.MonoStaminaFactor;
         diffCalcResult.Rhythm = taikoDiff.RhythmDifficulty;
         diffCalcResult.Colour = taikoDiff.ColourDifficulty;
         diffCalcResult.Peak = taikoDiff.PeakDifficulty;
+        diffCalcResult.GreatHitWindow = taikoDiff.GreatHitWindow;
+        diffCalcResult.OkHitWindow = taikoDiff.OkHitWindow;
     }
 
-    protected override void Map(TaikoDifficultyAttributes taikoDiff, DiffCalcResult diffCalcResult)
+    protected override void MapProperties(TaikoDifficultyAttributes taikoDiff, DiffCalcResult diffCalcResult)
     {
-        taikoDiff.GreatHitWindow = diffCalcResult.GreatHitWindow;
         taikoDiff.StaminaDifficulty = diffCalcResult.Stamina;
+        taikoDiff.MonoStaminaFactor = diffCalcResult.MonoStaminaFactor;
         taikoDiff.RhythmDifficulty = diffCalcResult.Rhythm;
         taikoDiff.ColourDifficulty = diffCalcResult.Colour;
         taikoDiff.PeakDifficulty = diffCalcResult.Peak;
+        taikoDiff.GreatHitWindow = diffCalcResult.GreatHitWindow;
+        taikoDiff.OkHitWindow = diffCalcResult.OkHitWindow;
     }
 }
 
 public class CatchRulesetUtil : RulesetUtil<CatchRuleset, CatchDifficultyAttributes>
 {
-    protected override void Map(DiffCalcResult diffCalcResult, CatchDifficultyAttributes catchDiff)
+    protected override void MapProperties(DiffCalcResult diffCalcResult, CatchDifficultyAttributes catchDiff)
     {
         diffCalcResult.ApproachRate = catchDiff.ApproachRate;
     }
 
-    protected override void Map(CatchDifficultyAttributes catchDiff, DiffCalcResult diffCalcResult)
+    protected override void MapProperties(CatchDifficultyAttributes catchDiff, DiffCalcResult diffCalcResult)
     {
         catchDiff.ApproachRate = diffCalcResult.ApproachRate;
     }
@@ -254,12 +277,12 @@ public class CatchRulesetUtil : RulesetUtil<CatchRuleset, CatchDifficultyAttribu
 
 public class ManiaRulesetUtil : RulesetUtil<ManiaRuleset, ManiaDifficultyAttributes>
 {
-    protected override void Map(DiffCalcResult diffCalcResult, ManiaDifficultyAttributes maniaDiff)
+    protected override void MapProperties(DiffCalcResult diffCalcResult, ManiaDifficultyAttributes maniaDiff)
     {
         diffCalcResult.GreatHitWindow = maniaDiff.GreatHitWindow;
     }
 
-    protected override void Map(ManiaDifficultyAttributes maniaDiff, DiffCalcResult diffCalcResult)
+    protected override void MapProperties(ManiaDifficultyAttributes maniaDiff, DiffCalcResult diffCalcResult)
     {
         maniaDiff.GreatHitWindow = diffCalcResult.GreatHitWindow;
     }

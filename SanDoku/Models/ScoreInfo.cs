@@ -4,7 +4,6 @@ namespace SanDoku.Models;
 
 public class ScoreInfo
 {
-    public LegacyMods Mods { get; set; }
     public int MaxCombo { get; set; }
     public long TotalScore { get; set; }
     public int Count50 { get; set; }

@@ -15,7 +15,7 @@ public class ProcessorWorkingBeatmap : WorkingBeatmap
     }
 
     protected override IBeatmap GetBeatmap() => _beatmap;
-    protected override Texture GetBackground() => throw new InvalidOperationException();
+    public override Texture GetBackground() => throw new InvalidOperationException();
     protected override Track GetBeatmapTrack() => throw new InvalidOperationException();
     protected override ISkin GetSkin() => throw new InvalidOperationException();
     public override Stream GetStream(string storagePath) => throw new InvalidOperationException();

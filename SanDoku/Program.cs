@@ -1,7 +1,5 @@
-using NJsonSchema;
-using NJsonSchema.Generation.TypeMappers;
-using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Formats;
+using SanDoku.Services;
 using SanDoku.Util;
 
 // make very old beatmap files work
@@ -16,6 +14,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddHealthChecks();
 builder.Services.AddRequestDecompression();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<IDiffCalcResultCacheService, DiffCalcResultCacheService>();
 builder.Services.AddControllers(o =>
 {
     o.InputFormatters.Add(new OsuInputFormatter());
@@ -23,11 +23,6 @@ builder.Services.AddControllers(o =>
 });
 builder.Services.AddSwaggerDocument(options =>
 {
-    options.SchemaSettings.TypeMappers.Add(new PrimitiveTypeMapper(typeof(Beatmap), s =>
-    {
-        s.Type = JsonObjectType.String;
-        s.Format = "osu-beatmap";
-    }));
     options.Version = "v1";
     options.Title = nameof(SanDoku);
 });

@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc.Formatters;
+﻿using System.Text;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Net.Http.Headers;
 using SanDoku.Models;
-using System.Text;
 
 namespace SanDoku.Util;
 
