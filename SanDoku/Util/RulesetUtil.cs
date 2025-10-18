@@ -119,6 +119,7 @@ public abstract class RulesetUtil
             TotalScoreVersion = LegacyScoreEncoder.FIRST_LAZER_VERSION + 1,
             IsLegacyScore = true,
             LegacyTotalScore = scoreInfo.TotalScore,
+            BeatmapInfo = workingBeatmap.BeatmapInfo
         };
         gameScoreInfo.SetCount50(scoreInfo.Count50);
         gameScoreInfo.SetCount100(scoreInfo.Count100);
