@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using NJsonSchema.Annotations;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;
+using osu.Game.Rulesets.Osu.Beatmaps;
 using osu.Game.Rulesets.UI;
 using osu.Game.Utils;
 using SanDoku.Extensions;
@@ -89,7 +90,7 @@ public class ProcessorController : ControllerBase
             var (diffCalcResult, modsUsed) = rulesetUtil.CalculateDifficultyAttributes(workingBeatmap, modArray, ct);
             _logger.LogDebug("[diff-calc] [{md5}] processing done!", beatmap.Md5Checksum);
 
-            var result = new DiffResult(beatmapGameMode, beatmap.Md5Checksum, rulesetUtil.LegacyGameMode, modsUsed, diffCalcResult);
+            var result = new DiffResult(beatmapGameMode, beatmap.Md5Checksum, rulesetUtil.LegacyGameMode, modsUsed, diffCalcResult, beatmapActual.Difficulty.Map());
             if (storeResultInCacheForPpCalc) _diffCalcResultCacheService.Set(result, workingBeatmap);
             return result;
         }
