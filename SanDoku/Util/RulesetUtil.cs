@@ -213,13 +213,13 @@ public class OsuRulesetUtil : RulesetUtil<OsuRuleset, OsuDifficultyAttributes>
         diffCalcResult.SpeedNoteCount = osuDiff.SpeedNoteCount;
         diffCalcResult.FlashlightDifficulty = osuDiff.FlashlightDifficulty;
         diffCalcResult.SliderFactor = osuDiff.SliderFactor;
-        diffCalcResult.AimTopWeightedSliderFactor = osuDiff.AimTopWeightedSliderFactor;
-        diffCalcResult.SpeedTopWeightedSliderFactor = osuDiff.SpeedTopWeightedSliderFactor;
+        // diffCalcResult.AimTopWeightedSliderFactor = osuDiff.AimTopWeightedSliderFactor;
+        // diffCalcResult.SpeedTopWeightedSliderFactor = osuDiff.SpeedTopWeightedSliderFactor;
         diffCalcResult.AimDifficultStrainCount = osuDiff.AimDifficultStrainCount;
         diffCalcResult.SpeedDifficultStrainCount = osuDiff.SpeedDifficultStrainCount;
-        diffCalcResult.NestedScorePerObject = osuDiff.NestedScorePerObject;
-        diffCalcResult.LegacyScoreBaseMultiplier = osuDiff.LegacyScoreBaseMultiplier;
-        diffCalcResult.MaximumLegacyComboScore = osuDiff.MaximumLegacyComboScore;
+        // diffCalcResult.NestedScorePerObject = osuDiff.NestedScorePerObject;
+        // diffCalcResult.LegacyScoreBaseMultiplier = osuDiff.LegacyScoreBaseMultiplier;
+        // diffCalcResult.MaximumLegacyComboScore = osuDiff.MaximumLegacyComboScore;
 
         diffCalcResult.DrainRate = osuDiff.DrainRate;
         diffCalcResult.HitCircleCount = osuDiff.HitCircleCount;
@@ -235,13 +235,13 @@ public class OsuRulesetUtil : RulesetUtil<OsuRuleset, OsuDifficultyAttributes>
         osuDiff.SpeedNoteCount = diffCalcResult.SpeedNoteCount;
         osuDiff.FlashlightDifficulty = diffCalcResult.FlashlightDifficulty;
         osuDiff.SliderFactor = diffCalcResult.SliderFactor;
-        osuDiff.AimTopWeightedSliderFactor = diffCalcResult.AimTopWeightedSliderFactor;
-        osuDiff.SpeedTopWeightedSliderFactor = diffCalcResult.SpeedTopWeightedSliderFactor;
+        // osuDiff.AimTopWeightedSliderFactor = diffCalcResult.AimTopWeightedSliderFactor;
+        // osuDiff.SpeedTopWeightedSliderFactor = diffCalcResult.SpeedTopWeightedSliderFactor;
         osuDiff.AimDifficultStrainCount = diffCalcResult.AimDifficultStrainCount;
         osuDiff.SpeedDifficultStrainCount = diffCalcResult.SpeedDifficultStrainCount;
-        osuDiff.NestedScorePerObject = diffCalcResult.NestedScorePerObject;
-        osuDiff.LegacyScoreBaseMultiplier = diffCalcResult.LegacyScoreBaseMultiplier;
-        osuDiff.MaximumLegacyComboScore = diffCalcResult.MaximumLegacyComboScore;
+        // osuDiff.NestedScorePerObject = diffCalcResult.NestedScorePerObject;
+        // osuDiff.LegacyScoreBaseMultiplier = diffCalcResult.LegacyScoreBaseMultiplier;
+        // osuDiff.MaximumLegacyComboScore = diffCalcResult.MaximumLegacyComboScore;
     
         osuDiff.DrainRate = diffCalcResult.DrainRate;
         osuDiff.HitCircleCount = diffCalcResult.HitCircleCount;
@@ -254,25 +254,25 @@ public class TaikoRulesetUtil : RulesetUtil<TaikoRuleset, TaikoDifficultyAttribu
 {
     protected override void MapProperties(DiffCalcResult diffCalcResult, TaikoDifficultyAttributes taikoDiff)
     {
-        diffCalcResult.MechanicalDifficulty = taikoDiff.MechanicalDifficulty;
         diffCalcResult.RhythmDifficulty = taikoDiff.RhythmDifficulty;
         diffCalcResult.ReadingDifficulty = taikoDiff.ReadingDifficulty;
         diffCalcResult.ColourDifficulty = taikoDiff.ColourDifficulty;
         diffCalcResult.StaminaDifficulty = taikoDiff.StaminaDifficulty;
         diffCalcResult.MonoStaminaFactor = taikoDiff.MonoStaminaFactor;
-        diffCalcResult.ConsistencyFactor = taikoDiff.ConsistencyFactor;
+        diffCalcResult.RhythmTopStrains = taikoDiff.RhythmTopStrains;
+        diffCalcResult.ColourTopStrains = taikoDiff.ColourTopStrains;
         diffCalcResult.StaminaTopStrains = taikoDiff.StaminaTopStrains;
     }
 
     protected override void MapProperties(TaikoDifficultyAttributes taikoDiff, DiffCalcResult diffCalcResult)
     {
-        taikoDiff.MechanicalDifficulty = diffCalcResult.MechanicalDifficulty;
         taikoDiff.RhythmDifficulty = diffCalcResult.RhythmDifficulty;
         taikoDiff.ReadingDifficulty = diffCalcResult.ReadingDifficulty;
         taikoDiff.ColourDifficulty = diffCalcResult.ColourDifficulty;
         taikoDiff.StaminaDifficulty = diffCalcResult.StaminaDifficulty;
         taikoDiff.MonoStaminaFactor = diffCalcResult.MonoStaminaFactor;
-        taikoDiff.ConsistencyFactor = diffCalcResult.ConsistencyFactor;
+        taikoDiff.RhythmTopStrains = diffCalcResult.RhythmTopStrains;
+        taikoDiff.ColourTopStrains = diffCalcResult.ColourTopStrains;
         taikoDiff.StaminaTopStrains = diffCalcResult.StaminaTopStrains;
     }
 }

@@ -69,18 +69,6 @@ public record DiffCalcResult
 
     /// <summary>
     /// Used by osu.
-    /// <c>ATTRIB_ID_AIM_TOP_WEIGHTED_SLIDER_FACTOR = 33</c>
-    /// </summary>
-    public double AimTopWeightedSliderFactor { get; set; }
-
-    /// <summary>
-    /// Used by osu.
-    /// <c>ATTRIB_ID_SPEED_TOP_WEIGHTED_SLIDER_FACTOR = 35</c>
-    /// </summary>
-    public double SpeedTopWeightedSliderFactor { get; set; }
-
-    /// <summary>
-    /// Used by osu.
     /// <c>ATTRIB_ID_AIM_DIFFICULT_STRAIN_COUNT = 25</c>
     /// </summary>
     public double AimDifficultStrainCount { get; set; }
@@ -90,24 +78,6 @@ public record DiffCalcResult
     /// <c>ATTRIB_ID_SPEED_DIFFICULT_STRAIN_COUNT = 23</c>
     /// </summary>
     public double SpeedDifficultStrainCount { get; set; }
-
-    /// <summary>
-    /// Used by osu
-    /// <c>ATTRIB_ID_NESTED_SCORE_PER_OBJECT = 37</c>
-    /// </summary>
-    public double NestedScorePerObject { get; set; }
-
-    /// <summary>
-    /// Used by osu
-    /// <c>ATTRIB_ID_LEGACY_SCORE_BASE_MULTIPLIER = 39</c>
-    /// </summary>
-    public double LegacyScoreBaseMultiplier { get; set; }
-
-    /// <summary>
-    /// Used by osu
-    /// <c>ATTRIB_ID_MAXIMUM_LEGACY_COMBO_SCORE = 41</c>
-    /// </summary>
-    public double MaximumLegacyComboScore { get; set; }
 
     /// <summary>Used by osu</summary>
     public double DrainRate { get; set; }
@@ -124,13 +94,6 @@ public record DiffCalcResult
     #endregion
 
     #region taiko
-
-    /// <summary>
-    /// The difficulty corresponding to the mechanical skills in osu!taiko.
-    /// This includes colour and stamina combined.
-    /// Used by taiko.
-    /// </summary>
-    public double MechanicalDifficulty { get; set; }
 
     /// <summary>
     /// The difficulty corresponding to the rhythm skill.
@@ -165,11 +128,14 @@ public record DiffCalcResult
     public double MonoStaminaFactor { get; set; }
 
     /// <summary>
-    /// The factor corresponding to the consistency of a map.
     /// Used by taiko.
-    /// <c>ATTRIB_ID_CONSISTENCY_FACTOR = 45</c>
     /// </summary>
-    public double ConsistencyFactor { get; set; }
+    public double RhythmTopStrains { get; set; }
+
+    /// <summary>
+    /// Used by taiko.
+    /// </summary>
+    public double ColourTopStrains { get; set; }
 
     /// <summary>
     /// Used by taiko.
