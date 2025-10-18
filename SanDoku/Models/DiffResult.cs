@@ -9,5 +9,6 @@ public record DiffResult
     string BeatmapMd5,
     LegacyGameMode GameModeUsed,
     LegacyMods ModsUsed,
-    DiffCalcResult DiffCalcResult
+    DiffCalcResult DiffCalcResult,
+    BeatmapProps BeatmapProps
 );
