@@ -194,23 +194,32 @@ public abstract class RulesetUtil<TRuleset, TDiffAttr> : RulesetUtil<TRuleset> w
         return new PpOutput(pp, attributes);
     }
 
-    protected abstract void MapProperties(DiffCalcResult diffCalcResult, TDiffAttr tDiff);
-    protected abstract void MapProperties(TDiffAttr tDiff, DiffCalcResult diffCalcResult);
+    protected virtual void MapProperties(DiffCalcResult diffCalcResult, TDiffAttr tDiff)
+    {
+    }
+
+    protected virtual void MapProperties(TDiffAttr tDiff, DiffCalcResult diffCalcResult)
+    {
+    }
 }
 
 public class OsuRulesetUtil : RulesetUtil<OsuRuleset, OsuDifficultyAttributes>
 {
     protected override void MapProperties(DiffCalcResult diffCalcResult, OsuDifficultyAttributes osuDiff)
     {
-        diffCalcResult.Aim = osuDiff.AimDifficulty;
-        diffCalcResult.Speed = osuDiff.SpeedDifficulty;
+        diffCalcResult.AimDifficulty = osuDiff.AimDifficulty;
+        diffCalcResult.AimDifficultSliderCount = osuDiff.AimDifficultSliderCount;
+        diffCalcResult.SpeedDifficulty = osuDiff.SpeedDifficulty;
         diffCalcResult.SpeedNoteCount = osuDiff.SpeedNoteCount;
-        diffCalcResult.Flashlight = osuDiff.FlashlightDifficulty;
+        diffCalcResult.FlashlightDifficulty = osuDiff.FlashlightDifficulty;
         diffCalcResult.SliderFactor = osuDiff.SliderFactor;
+        diffCalcResult.AimTopWeightedSliderFactor = osuDiff.AimTopWeightedSliderFactor;
+        diffCalcResult.SpeedTopWeightedSliderFactor = osuDiff.SpeedTopWeightedSliderFactor;
         diffCalcResult.AimDifficultStrainCount = osuDiff.AimDifficultStrainCount;
         diffCalcResult.SpeedDifficultStrainCount = osuDiff.SpeedDifficultStrainCount;
-        diffCalcResult.ApproachRate = osuDiff.ApproachRate;//
-        diffCalcResult.OverallDifficulty = osuDiff.OverallDifficulty;//
+        diffCalcResult.NestedScorePerObject = osuDiff.NestedScorePerObject;
+        diffCalcResult.LegacyScoreBaseMultiplier = osuDiff.LegacyScoreBaseMultiplier;
+        diffCalcResult.MaximumLegacyComboScore = osuDiff.MaximumLegacyComboScore;
 
         diffCalcResult.DrainRate = osuDiff.DrainRate;
         diffCalcResult.HitCircleCount = osuDiff.HitCircleCount;
@@ -220,15 +229,19 @@ public class OsuRulesetUtil : RulesetUtil<OsuRuleset, OsuDifficultyAttributes>
 
     protected override void MapProperties(OsuDifficultyAttributes osuDiff, DiffCalcResult diffCalcResult)
     {
-        osuDiff.AimDifficulty = diffCalcResult.Aim;
-        osuDiff.SpeedDifficulty = diffCalcResult.Speed;
+        osuDiff.AimDifficulty = diffCalcResult.AimDifficulty;
+        osuDiff.AimDifficultSliderCount = diffCalcResult.AimDifficultSliderCount;
+        osuDiff.SpeedDifficulty = diffCalcResult.SpeedDifficulty;
         osuDiff.SpeedNoteCount = diffCalcResult.SpeedNoteCount;
-        osuDiff.FlashlightDifficulty = diffCalcResult.Flashlight;
+        osuDiff.FlashlightDifficulty = diffCalcResult.FlashlightDifficulty;
         osuDiff.SliderFactor = diffCalcResult.SliderFactor;
+        osuDiff.AimTopWeightedSliderFactor = diffCalcResult.AimTopWeightedSliderFactor;
+        osuDiff.SpeedTopWeightedSliderFactor = diffCalcResult.SpeedTopWeightedSliderFactor;
         osuDiff.AimDifficultStrainCount = diffCalcResult.AimDifficultStrainCount;
         osuDiff.SpeedDifficultStrainCount = diffCalcResult.SpeedDifficultStrainCount;
-        osuDiff.ApproachRate = diffCalcResult.ApproachRate;
-        osuDiff.OverallDifficulty = diffCalcResult.OverallDifficulty;
+        osuDiff.NestedScorePerObject = diffCalcResult.NestedScorePerObject;
+        osuDiff.LegacyScoreBaseMultiplier = diffCalcResult.LegacyScoreBaseMultiplier;
+        osuDiff.MaximumLegacyComboScore = diffCalcResult.MaximumLegacyComboScore;
     
         osuDiff.DrainRate = diffCalcResult.DrainRate;
         osuDiff.HitCircleCount = diffCalcResult.HitCircleCount;
@@ -241,49 +254,33 @@ public class TaikoRulesetUtil : RulesetUtil<TaikoRuleset, TaikoDifficultyAttribu
 {
     protected override void MapProperties(DiffCalcResult diffCalcResult, TaikoDifficultyAttributes taikoDiff)
     {
-        diffCalcResult.Stamina = taikoDiff.StaminaDifficulty;
+        diffCalcResult.MechanicalDifficulty = taikoDiff.MechanicalDifficulty;
+        diffCalcResult.RhythmDifficulty = taikoDiff.RhythmDifficulty;
+        diffCalcResult.ReadingDifficulty = taikoDiff.ReadingDifficulty;
+        diffCalcResult.ColourDifficulty = taikoDiff.ColourDifficulty;
+        diffCalcResult.StaminaDifficulty = taikoDiff.StaminaDifficulty;
         diffCalcResult.MonoStaminaFactor = taikoDiff.MonoStaminaFactor;
-        diffCalcResult.Rhythm = taikoDiff.RhythmDifficulty;
-        diffCalcResult.Colour = taikoDiff.ColourDifficulty;
-        diffCalcResult.Peak = taikoDiff.PeakDifficulty;
-        diffCalcResult.GreatHitWindow = taikoDiff.GreatHitWindow;
-        diffCalcResult.OkHitWindow = taikoDiff.OkHitWindow;
+        diffCalcResult.ConsistencyFactor = taikoDiff.ConsistencyFactor;
+        diffCalcResult.StaminaTopStrains = taikoDiff.StaminaTopStrains;
     }
 
     protected override void MapProperties(TaikoDifficultyAttributes taikoDiff, DiffCalcResult diffCalcResult)
     {
-        taikoDiff.StaminaDifficulty = diffCalcResult.Stamina;
+        taikoDiff.MechanicalDifficulty = diffCalcResult.MechanicalDifficulty;
+        taikoDiff.RhythmDifficulty = diffCalcResult.RhythmDifficulty;
+        taikoDiff.ReadingDifficulty = diffCalcResult.ReadingDifficulty;
+        taikoDiff.ColourDifficulty = diffCalcResult.ColourDifficulty;
+        taikoDiff.StaminaDifficulty = diffCalcResult.StaminaDifficulty;
         taikoDiff.MonoStaminaFactor = diffCalcResult.MonoStaminaFactor;
-        taikoDiff.RhythmDifficulty = diffCalcResult.Rhythm;
-        taikoDiff.ColourDifficulty = diffCalcResult.Colour;
-        taikoDiff.PeakDifficulty = diffCalcResult.Peak;
-        taikoDiff.GreatHitWindow = diffCalcResult.GreatHitWindow;
-        taikoDiff.OkHitWindow = diffCalcResult.OkHitWindow;
+        taikoDiff.ConsistencyFactor = diffCalcResult.ConsistencyFactor;
+        taikoDiff.StaminaTopStrains = diffCalcResult.StaminaTopStrains;
     }
 }
 
 public class CatchRulesetUtil : RulesetUtil<CatchRuleset, CatchDifficultyAttributes>
 {
-    protected override void MapProperties(DiffCalcResult diffCalcResult, CatchDifficultyAttributes catchDiff)
-    {
-        diffCalcResult.ApproachRate = catchDiff.ApproachRate;
-    }
-
-    protected override void MapProperties(CatchDifficultyAttributes catchDiff, DiffCalcResult diffCalcResult)
-    {
-        catchDiff.ApproachRate = diffCalcResult.ApproachRate;
-    }
 }
 
 public class ManiaRulesetUtil : RulesetUtil<ManiaRuleset, ManiaDifficultyAttributes>
 {
-    protected override void MapProperties(DiffCalcResult diffCalcResult, ManiaDifficultyAttributes maniaDiff)
-    {
-        diffCalcResult.GreatHitWindow = maniaDiff.GreatHitWindow;
-    }
-
-    protected override void MapProperties(ManiaDifficultyAttributes maniaDiff, DiffCalcResult diffCalcResult)
-    {
-        maniaDiff.GreatHitWindow = diffCalcResult.GreatHitWindow;
-    }
 }
