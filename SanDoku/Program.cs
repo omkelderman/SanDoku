@@ -1,4 +1,7 @@
+using NJsonSchema;
+using NJsonSchema.Generation.TypeMappers;
 using osu.Game.Beatmaps.Formats;
+using osu.Game.Beatmaps.Legacy;
 using SanDoku.Services;
 using SanDoku.Util;
 
@@ -25,6 +28,8 @@ builder.Services.AddSwaggerDocument(options =>
 {
     options.Version = "v1";
     options.Title = nameof(SanDoku);
+    options.SchemaSettings.TypeMappers.Add(new PrimitiveTypeMapper(typeof(LegacyMods),
+        schema => schema.Type = JsonObjectType.Integer));
 });
 
 var app = builder.Build();

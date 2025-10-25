@@ -12,7 +12,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="NSwag.AspNetCore" Version="14.1.0" />
+		<PackageReference Include="NSwag.AspNetCore" Version="14.6.1" />
 		
 		<!-- take versions from https://github.com/ppy/osu-queue-score-statistics/blob/master/osu.Server.Queues.ScoreStatisticsProcessor/osu.Server.Queues.ScoreStatisticsProcessor.csproj -->
         <!-- master branch on the osu-queue-score-statistics should reflect what is currently running on osu servers after a diffcalc/pp reprocess has happened -->

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using NJsonSchema.Annotations;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;
-using osu.Game.Rulesets.Osu.Beatmaps;
 using osu.Game.Rulesets.UI;
 using osu.Game.Utils;
 using SanDoku.Extensions;
@@ -42,7 +41,7 @@ public class ProcessorController : ControllerBase
     public ActionResult<DiffResult> CalcDiff(
         [FromBody, JsonSchemaType(typeof(byte[]))] BeatmapInput beatmap,
         [FromQuery] LegacyGameMode? mode = null,
-        [FromQuery, JsonSchemaType(typeof(int))] LegacyMods mods = LegacyMods.None,
+        [FromQuery] LegacyMods mods = LegacyMods.None,
         [FromQuery] bool storeResultInCacheForPpCalc = false,
         CancellationToken ct = default)
     {
@@ -124,8 +123,7 @@ public class ProcessorController : ControllerBase
         [FromBody] ScoreInfo scoreInfo,
         [FromQuery] string beatmapMd5,
         [FromQuery] LegacyGameMode mode = LegacyGameMode.Osu,
-        [FromQuery, JsonSchemaType(typeof(int))]
-        LegacyMods mods = LegacyMods.None
+        [FromQuery] LegacyMods mods = LegacyMods.None
     )
     {
         if (!Enum.IsDefined(mode)) ModelState.AddModelError(nameof(mode), $"invalid game mode value: {mode}");
