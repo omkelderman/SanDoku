@@ -1,37 +1,50 @@
 using osu.Game.Beatmaps.Formats;
-using osu.Game.Rulesets;
+using SanDoku.Services;
 using SanDoku.Util;
 
-namespace SanDoku;
+// make very old beatmap files work
+LegacyDifficultyCalculatorBeatmapDecoder.Register();
 
-public class Program
+// explicitly set the RulesetStore so we don't get a warning later on about it
+Decoder.RegisterDependencies(new CustomRulesetStore(RulesetUtil.GetAllAvailableRulesetInfos()));
+
+// setup web app
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddHealthChecks();
+builder.Services.AddRequestDecompression();
+builder.Services.AddMemoryCache();
+builder.Services.AddScoped<IDiffCalcResultCacheService, DiffCalcResultCacheService>();
+builder.Services.AddControllers(o =>
 {
-    public static void Main(string[] args)
-    {
-        // make very old beatmap files work
-        LegacyDifficultyCalculatorBeatmapDecoder.Register();
-        
-        // explicitly set the RulesetStore so we don't get a warning later on about it
-        Decoder.RegisterDependencies(new CustomRulesetStore(RulesetUtil.GetAllAvailableRulesetInfos()));
+    o.InputFormatters.Add(new OsuInputFormatter());
+    o.AllowEmptyInputInBodyModelBinding = true;
+});
+builder.Services.AddSwaggerDocument(options =>
+{
+    options.Version = "v1";
+    options.Title = nameof(SanDoku);
+});
 
-        // run app
-        CreateHostBuilder(args).Build().Run();
-    }
+var app = builder.Build();
 
-    public static IHostBuilder CreateHostBuilder(string[] args) =>
-        Host.CreateDefaultBuilder(args)
-            .ConfigureWebHostDefaults(webBuilder =>
-            {
-                webBuilder.UseStartup<Startup>();
-            });
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
 }
 
-public class CustomRulesetStore : RulesetStore
-{
-    public CustomRulesetStore(IEnumerable<RulesetInfo> availableRulesets)
-    {
-        AvailableRulesets = availableRulesets;
-    }
+app.UseOpenApi();
+app.UseSwaggerUi();
 
-    public override IEnumerable<RulesetInfo> AvailableRulesets { get; }
-}
+app.UseRouting();
+
+app.UseAuthorization();
+
+app.UseRequestDecompression();
+
+app.MapHealthChecks("/health");
+app.MapControllers();
+
+app.Run();

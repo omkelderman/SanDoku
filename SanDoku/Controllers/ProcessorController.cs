@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Net;
+using Microsoft.AspNetCore.Mvc;
 using NJsonSchema.Annotations;
 using osu.Game.Beatmaps;
 using osu.Game.Beatmaps.Legacy;
@@ -6,8 +7,8 @@ using osu.Game.Rulesets.UI;
 using osu.Game.Utils;
 using SanDoku.Extensions;
 using SanDoku.Models;
+using SanDoku.Services;
 using SanDoku.Util;
-using System.Net;
 
 namespace SanDoku.Controllers;
 
@@ -16,10 +17,12 @@ namespace SanDoku.Controllers;
 public class ProcessorController : ControllerBase
 {
     private readonly ILogger<ProcessorController> _logger;
+    private readonly IDiffCalcResultCacheService _diffCalcResultCacheService;
 
-    public ProcessorController(ILogger<ProcessorController> logger)
+    public ProcessorController(ILogger<ProcessorController> logger, IDiffCalcResultCacheService diffCalcResultCacheService)
     {
         _logger = logger;
+        _diffCalcResultCacheService = diffCalcResultCacheService;
     }
 
     /// <summary>
@@ -28,14 +31,19 @@ public class ProcessorController : ControllerBase
     /// <param name="beatmap">The contents of an .osu file, must be the correct Content-Type, optionally supports Content-Encoding "gzip" and "br"</param>
     /// <param name="mode">Override game mode</param>
     /// <param name="mods">Optionally provide mods</param>
+    /// <param name="storeResultInCacheForPpCalc">set to true if you intend to run pp calc for this map+mode+mods combination later on</param>
     /// <param name="ct"></param>
     /// <returns></returns>
     [HttpPost("diff")]
     [Consumes(OsuInputFormatter.ContentType)]
     [ProducesResponseType(typeof(DiffResult), (int)HttpStatusCode.OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), (int)HttpStatusCode.BadRequest)]
-    public ActionResult<DiffResult> CalcDiff([FromBody, JsonSchemaType(typeof(byte[]))] BeatmapInput beatmap, [FromQuery] LegacyGameMode? mode = null,
-        [FromQuery] LegacyMods mods = LegacyMods.None, CancellationToken ct = default)
+    public ActionResult<DiffResult> CalcDiff(
+        [FromBody, JsonSchemaType(typeof(byte[]))] BeatmapInput beatmap,
+        [FromQuery] LegacyGameMode? mode = null,
+        [FromQuery, JsonSchemaType(typeof(int))] LegacyMods mods = LegacyMods.None,
+        [FromQuery] bool storeResultInCacheForPpCalc = false,
+        CancellationToken ct = default)
     {
         if (beatmap.ContentLength == 0)
         {
@@ -68,7 +76,7 @@ public class ProcessorController : ControllerBase
         if (!ModUtils.CheckCompatibleSet(modArray, out var invalid))
         {
             var invalidModsStr = string.Join(',', invalid.Select(mod => mod.Acronym));
-            _logger.LogDebug("Invalid mod combination requested {invalidModsStr} for map {md5}", invalidModsStr, beatmap.Md5Checksum);
+            _logger.LogDebug("[diff-calc] [{md5}] invalid mod combination requested: {invalidModsStr}", beatmap.Md5Checksum, invalidModsStr);
             ModelState.AddModelError(nameof(mods), $"invalid mod combination: {invalidModsStr}");
             return ValidationProblem();
         }
@@ -81,7 +89,9 @@ public class ProcessorController : ControllerBase
             var (diffCalcResult, modsUsed) = rulesetUtil.CalculateDifficultyAttributes(workingBeatmap, modArray, ct);
             _logger.LogDebug("[diff-calc] [{md5}] processing done!", beatmap.Md5Checksum);
 
-            return new DiffResult(beatmapGameMode, beatmap.Md5Checksum, rulesetUtil.LegacyGameMode, modsUsed, diffCalcResult);
+            var result = new DiffResult(beatmapGameMode, beatmap.Md5Checksum, rulesetUtil.LegacyGameMode, modsUsed, diffCalcResult);
+            if (storeResultInCacheForPpCalc) _diffCalcResultCacheService.Set(result, workingBeatmap);
+            return result;
         }
         catch (BeatmapInvalidForRulesetException)
         {
@@ -99,18 +109,26 @@ public class ProcessorController : ControllerBase
     }
 
     /// <summary>
-    /// Calculate PP of a certain score
+    /// Calculate PP of a certain score.
     /// </summary>
-    /// <param name="ppInput">diffcalc values and score values</param>
+    /// <param name="scoreInfo">info about the score to calculate</param>
+    /// <param name="beatmapMd5">the beatmap hash of the beatmap used, this beatmap needs to have been run through the <c>/diff</c> endpoint first to be remembered internally</param>
+    /// <param name="mode">mode used, defaults to osu!</param>
+    /// <param name="mods">mods used, defaults to NoMod</param>
     /// <returns></returns>
     [HttpPost("pp")]
     [ProducesResponseType(typeof(PpOutput), (int)HttpStatusCode.OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), (int)HttpStatusCode.BadRequest)]
-    public ActionResult<PpOutput> CalcPp([FromBody] PpInput ppInput)
+    public ActionResult<PpOutput> CalcPp(
+        [FromBody] ScoreInfo scoreInfo,
+        [FromQuery] string beatmapMd5,
+        [FromQuery] LegacyGameMode mode = LegacyGameMode.Osu,
+        [FromQuery, JsonSchemaType(typeof(int))]
+        LegacyMods mods = LegacyMods.None
+    )
     {
-        if (!Enum.IsDefined(ppInput.GameMode)) ModelState.AddModelError(nameof(ppInput.GameMode), $"invalid game mode value: {ppInput.GameMode}");
-        if (!LegacyModsUtil.IsDefined(ppInput.ScoreInfo.Mods))
-            ModelState.AddModelError($"{nameof(ppInput.ScoreInfo)}.{nameof(ppInput.ScoreInfo.Mods)}", $"invalid mods value: {ppInput.ScoreInfo.Mods}");
+        if (!Enum.IsDefined(mode)) ModelState.AddModelError(nameof(mode), $"invalid game mode value: {mode}");
+        if (!LegacyModsUtil.IsDefined(mods)) ModelState.AddModelError($"{nameof(mods)}", $"invalid mods value: {mods}");
 
         if (!ModelState.IsValid)
         {
@@ -118,23 +136,32 @@ public class ProcessorController : ControllerBase
             return ValidationProblem();
         }
 
-        var rulesetUtil = RulesetUtil.GetForLegacyGameMode(ppInput.GameMode);
+        var rulesetUtil = RulesetUtil.GetForLegacyGameMode(mode);
 
-        var scoreInfoWithModArray = rulesetUtil.MapToScoreInfoObjectWithNewStyleModsWithClassicMod(ppInput.ScoreInfo);
+        var modsUsed = rulesetUtil.ConvertFromLegacyModsAndAddClassicMod(mods);
 
         // check if mods are illegal
-        if (!ModUtils.CheckCompatibleSet(scoreInfoWithModArray.Mods, out var invalid))
+        if (!ModUtils.CheckCompatibleSet(modsUsed, out var invalid))
         {
             var invalidModsStr = string.Join(',', invalid.Select(mod => mod.Acronym));
             _logger.LogDebug("[pp-calc] invalid mod combination requested: {invalidModsStr}", invalidModsStr);
-            ModelState.AddModelError($"{nameof(ppInput.ScoreInfo)}.{nameof(ppInput.ScoreInfo.Mods)}", $"invalid mod combination: {invalidModsStr}");
+            ModelState.AddModelError($"{nameof(mods)}", $"invalid mod combination: {invalidModsStr}");
+            return ValidationProblem();
+        }
+
+        if (!_diffCalcResultCacheService.TryGet(beatmapMd5, mode, mods, out var diffResult, out var workingBeatmap))
+        {
+            _logger.LogDebug("[pp-calc] diffcalc info for map with specified mode and mods not found: hash={beatmapHash},mode={mode},mods={mods}", beatmapMd5,
+                mode, mods);
+            ModelState.AddModelError($"{nameof(beatmapMd5)}",
+                $"diffcalc info for map with specified mode and mods not found: hash={beatmapMd5},mode={mode},mods={mods}");
             return ValidationProblem();
         }
 
         _logger.LogDebug("[pp-calc] start calculating...");
         try
         {
-            var ppOutput = rulesetUtil.CalculatePerformance(ppInput.DiffCalcResult, scoreInfoWithModArray);
+            var ppOutput = rulesetUtil.CalculatePerformance(workingBeatmap, diffResult.DiffCalcResult, modsUsed, scoreInfo);
             _logger.LogDebug("[pp-calc] calculating done!");
 
             return ppOutput;
